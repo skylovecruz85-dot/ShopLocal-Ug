@@ -8,11 +8,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-export const isFirebaseConfigured = Object.values(firebaseConfig).every(
+export const firebaseConfigured = Object.values(firebaseConfig).every(
   (value) => typeof value === 'string' && value.trim().length > 0,
 );
 
-const firebaseApp = isFirebaseConfigured
+const firebaseApp = firebaseConfigured
   ? getApps().find((app) => app.name === '[DEFAULT]') ?? initializeApp(firebaseConfig)
   : null;
 
@@ -55,3 +55,5 @@ export const firebaseAuthErrorMessage = (error: unknown) => {
       return 'Firebase could not complete sign-in. Check the phone number and Firebase Authentication setup, then try again.';
   }
 };
+
+export const firebaseProfileStorageKey = (uid: string) => `shoplocal_profile_${uid}`;

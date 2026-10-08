@@ -15,7 +15,6 @@ import {
   Check
 } from 'lucide-react';
 import { BoostOrder, Listing } from '../types';
-import { PAYMENT_CONFIG, ADMIN_CONFIG } from '../config/paymentConfig';
 
 interface AdminBoostOrdersModalProps {
   orders: BoostOrder[];
@@ -77,7 +76,7 @@ export const AdminBoostOrdersModal: React.FC<AdminBoostOrdersModalProps> = ({
                 )}
               </div>
               <p className="text-[11px] text-zinc-400 mt-0.5">
-                Verify telecom SMS transactions &amp; activate TOP ad placement
+                Review sample boost requests. Approval changes this preview only.
               </p>
             </div>
           </div>
@@ -91,26 +90,8 @@ export const AdminBoostOrdersModal: React.FC<AdminBoostOrdersModalProps> = ({
           </button>
         </div>
 
-        {/* Admin Destination Lines Information Bar */}
-        <div className="px-5 py-2.5 bg-[#1B2215] border-b border-[#2A2A2A] flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 text-zinc-300">
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-[#00E676]/20 text-[#00E676] px-2 py-0.5 rounded">
-              Receiving Business: {PAYMENT_CONFIG.businessName}
-            </span>
-            <span className="text-[11px] text-zinc-400">
-              Admin Alerts: <strong className="text-white font-mono">{PAYMENT_CONFIG.adminPhone}</strong>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 text-[11px] font-mono">
-            <span className="text-zinc-300">
-              MTN: <strong className="text-[#FFCC00]">{PAYMENT_CONFIG.mtnMomo}</strong> ({PAYMENT_CONFIG.mtnName})
-            </span>
-            <span className="text-zinc-500">•</span>
-            <span className="text-zinc-300">
-              Airtel: <strong className="text-[#FF5252]">{PAYMENT_CONFIG.airtelMoney}</strong> ({PAYMENT_CONFIG.airtelName})
-            </span>
-          </div>
+        <div role="note" className="px-5 py-3 bg-amber-950/30 border-b border-amber-500/20 text-xs text-amber-100">
+          Demo orders only. Payment verification, carrier alerts, and fund transfers are not connected.
         </div>
 
         {/* Filter Pills + Search */}

@@ -137,7 +137,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Business profile name - only visible to the owner
   const isOwner = isOwnerUser(currentUser);
   const profileName = isOwner 
-    ? (currentUser.businessName || "Prime Sanitary Centre")
+    ? (currentUser.businessName || "Demo Local Shop")
     : (currentUser.businessName || currentUser.name);
 
   return (
@@ -264,7 +264,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                 <p className="text-[11px] text-slate-500">
                   {currentUser.isProMember 
-                    ? 'You have unlimited lifetime classifieds active on your verified merchant account.'
+                    ? 'Demo PRO is enabled in this browser; no payment was processed.'
                     : `You have ${Math.max(0, freeListingsTotal - currentUser.freeListingsUsed)} free listings remaining in your seller allowance.`}
                 </p>
 
@@ -459,7 +459,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               {/* 5. FIX USER PROFILE CARD:
                   - Header: White
                   - Logo centered 80px circle with green border
-                  - Name "Prime Sanitary Centre" black 18px bold + Verified yellow badge
+                  - Demo Local Shop profile title and sample badge
                   - Contact: phone + email in one line grey 12px, center
                   - "Upload Photo" button white with green border, not grey
                   - Account Credentials: label grey left, value black right bold
@@ -491,7 +491,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </button>
                 </div>
 
-                {/* Name "Prime Sanitary Centre" black 18px bold + Verified yellow badge */}
+                {/* Demo Local Shop profile title and sample badge */}
                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
                   <h3 className="font-display font-bold text-[18px] text-[#222222]">
                     {profileName}
@@ -555,15 +555,13 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </div>
 
                   <div className="flex justify-between items-center py-1 border-b border-[#EEEEEE] text-xs">
-                    <span className="text-[#757575] font-medium">National ID (NIN)</span>
-                    <span className="text-[#00B53F] font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> CM98024104K8LA (Verified)
-                    </span>
+  <span className="text-[#757575] font-medium">Identity checks</span>
+                    <span className="text-slate-500 font-bold">Not connected in demo</span>
                   </div>
 
                   <div className="flex justify-between items-center py-1 text-xs">
                     <span className="text-[#757575] font-medium">Account Status</span>
-                    <span className="text-[#00B53F] font-bold">Verified Business Merchant</span>
+                    <span className="text-slate-500 font-bold">Demo profile</span>
                   </div>
                 </div>
 
@@ -634,8 +632,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       <div className="w-9 h-9 rounded-full bg-emerald-50 text-[#00B53F] flex items-center justify-center">
                         <ShieldCheck className="w-4 h-4 text-[#00B53F]" />
                       </div>
-                      <span className="text-[11px] font-bold text-[#222222]">NIN ID</span>
-                      <span className="text-[9px] text-[#00B53F] font-bold">Verified</span>
+<span className="text-[11px] font-bold text-[#222222]">Identity check</span>
+  <span className="text-[9px] text-slate-500 font-bold">Demo only</span>
                     </div>
 
                     {/* 6. PRO Badge */}

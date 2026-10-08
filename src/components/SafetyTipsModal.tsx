@@ -42,7 +42,7 @@ export const SafetyTipsModal: React.FC<SafetyTipsModalProps> = ({
     {
       icon: Lock,
       title: 'Keep Your MoMo PIN 100% Confidential',
-      desc: 'Never share your 5-digit MTN MoMo or Airtel Money PIN or SMS verification codes with anyone claiming to be a ShopLocal Ug representative or buyer.',
+      desc: 'This ShopLocal demo never asks for a MoMo PIN or SMS verification code. No telecom payment request is sent from this preview.',
     },
     {
       icon: DollarSign,
@@ -111,7 +111,7 @@ export const SafetyTipsModal: React.FC<SafetyTipsModalProps> = ({
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900 dark:text-amber-200">
               <strong className="block font-bold mb-0.5">Golden Rule:</strong>
-              Never send money or pay upfront before inspecting goods in person. All legitimate Ugandan sellers accept payment on delivery or meeting.
+              Never pay upfront before inspecting an item. This demo does not process payment; in a live trade, agree on safe payment and delivery terms directly with the seller.
             </div>
           </div>
 
@@ -147,7 +147,7 @@ export const SafetyTipsModal: React.FC<SafetyTipsModalProps> = ({
               darkMode ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'
             }`}>
               <p className="text-xs font-semibold">
-                Encountered a suspicious listing, scammer, or fake number?
+                Reports in this demo stay in your browser; no moderation team is notified.
               </p>
               <button
                 onClick={() => {

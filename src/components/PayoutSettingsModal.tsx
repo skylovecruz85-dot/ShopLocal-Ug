@@ -96,10 +96,10 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
             <div>
               <h3 className="font-display font-black text-base sm:text-lg flex items-center gap-2">
                 <Smartphone className="w-5 h-5 text-emerald-600" />
-                <span>Direct MTN & Airtel Payout Lines</span>
+                <span>Demo payout preferences</span>
               </h3>
               <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Set the telecom lines where your buyer payments arrive
+                Preview payout preferences; nothing connects to a telecom provider.
               </p>
             </div>
           </div>
@@ -122,10 +122,10 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
           }`}>
             <div className="flex items-center gap-1.5 font-bold">
               <Zap className="w-4 h-4 text-amber-500" />
-              <span>Instant Payouts Directly to Your Mobile Device</span>
+              <span>Local demo settings only</span>
             </div>
             <p className="opacity-90">
-              When a buyer taps <strong>"Pay with MTN MoMo / Airtel"</strong> on your items, funds are routed directly to these registered mobile money lines.
+              This browser-only demo never initiates carrier payments, SMS alerts, or cashouts. Values here are saved locally for preview only.
             </p>
           </div>
 
@@ -184,7 +184,7 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
               className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer pt-1"
             >
               <Send className="w-3 h-3" />
-              <span>Send Test UGX 150,000 Credit Alert to My MTN Line</span>
+              <span>Preview simulated MTN credit alert</span>
             </button>
           </div>
 
@@ -243,7 +243,7 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
               className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 cursor-pointer pt-1"
             >
               <Send className="w-3 h-3" />
-              <span>Send Test UGX 280,000 Credit Alert to My Airtel Line</span>
+              <span>Preview simulated Airtel credit alert</span>
             </button>
           </div>
 
@@ -262,7 +262,7 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
               }`}
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              If you operate a business merchant code, enter it here for 0% cashout fees.
+              Sample field only; merchant codes are not validated or connected in this demo.
             </p>
           </div>
 
@@ -271,8 +271,8 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
             darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
           }`}>
             <div>
-              <span className="text-xs font-bold block">Receive Purchases Directly to My Lines</span>
-              <span className="text-[11px] text-slate-400">Buyers deposit straight to your phone with instant SMS notification</span>
+              <span className="text-xs font-bold block">Keep demo payout preferences</span>
+              <span className="text-[11px] text-slate-400">This setting does not enable live payments or SMS alerts.</span>
             </div>
             <input
               type="checkbox"
@@ -288,13 +288,13 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
               className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>{isSaved ? 'Payout Lines Saved! ✓' : 'Save My Direct Payout Lines'}</span>
+              <span>{isSaved ? 'Demo preferences saved' : 'Save demo preferences'}</span>
             </button>
           </div>
 
           <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 text-center">
             <Lock className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Protected by MTN Uganda MoMo Open API & Airtel Money Uganda Developer API</span>
+            <span>No MTN or Airtel API is connected; no transfer occurs.</span>
           </div>
         </form>
       </div>

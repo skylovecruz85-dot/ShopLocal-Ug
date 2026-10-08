@@ -120,11 +120,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     return 'skylov***@gmail.com';
   };
 
-  // Make Prime Sanitary Centre account invisible to other users unless the owner
+  // Keep the demo owner profile private unless the owner
   const isOwnerViewing = isOwnerUser(currentUser);
   const isPrimeCentreUser = isOwnerUser(user);
   const displayName = isPrimeCentreUser 
-    ? (isOwnerViewing ? (user.businessName || "Prime Sanitary Centre") : user.name)
+    ? (isOwnerViewing ? (user.businessName || "Demo Local Shop") : user.name)
     : (user.businessName || user.name);
 
   return (
@@ -196,7 +196,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </h3>
               {user.isVerified && (
                 <span className="inline-flex items-center gap-1 bg-[#FFB703] text-slate-950 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
-                  <ShieldCheck className="w-3 h-3 fill-slate-950" /> Verified
+                  <ShieldCheck className="w-3 h-3 fill-slate-950" /> Sample badge
                 </span>
               )}
             </div>
@@ -257,15 +257,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
 
               <div className="flex justify-between items-center py-1 border-b border-[#EEEEEE] text-xs">
-                <span className="text-[#757575] font-medium">National ID (NIN)</span>
-                <span className="text-[#00B53F] font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> CM98024104K8LA (Verified)
-                </span>
+                <span className="text-[#757575] font-medium">Identity checks</span>
+                <span className="text-slate-500 font-bold">Not connected in demo</span>
               </div>
 
               <div className="flex justify-between items-center py-1 text-xs">
                 <span className="text-[#757575] font-medium">Account Status</span>
-                <span className="text-[#00B53F] font-bold">Verified Business Merchant</span>
+                <span className="text-slate-500 font-bold">Demo profile</span>
               </div>
             </div>
           </div>
@@ -283,7 +281,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   ))}
                 </div>
                 <span className="text-slate-500">
-                  ({sellerReviews.length} verified buyer reviews)
+                  ({sellerReviews.length} sample reviews)
                 </span>
               </div>
             ) : (

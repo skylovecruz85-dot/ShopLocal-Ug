@@ -125,94 +125,37 @@ export const UGANDA_DISTRICTS = [
 
 export const INITIAL_CURRENT_USER: User = {
   id: 'usr_me_001',
-  name: 'Brian Kigozi',
-  businessName: 'Prime Sanitary Centre',
-  phone: '0765326279',
-  email: 'skylovecruz85@gmail.com',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+  name: 'Demo Seller',
+  businessName: 'Demo Local Shop',
+  phone: '',
+  email: 'seller@example.com',
+  avatar: '/shoplocal-ug-app-icon.png',
   district: 'Kampala',
   subCounty: 'Nakawa Division',
-  rating: 4.9,
-  reviewCount: 14,
-  isVerified: true,
-  verificationStatus: 'VERIFIED',
-  ninNumber: 'CM98024104K8LA',
-  isPhoneVerified: true,
+  rating: 0,
+  reviewCount: 0,
+  isVerified: false,
+  verificationStatus: 'UNVERIFIED',
+  isPhoneVerified: false,
   isProMember: false,
-  freeListingsUsed: 3,
+  freeListingsUsed: 0,
   freeListingsTotal: 18,
   hasBiometrics: false,
-  joinedDate: '2023-04-12',
-  responseTime: '< 15 mins',
-  badges: ['Verified Seller (NIN)', 'Fast Responder', 'Uganda Small Business Pioneer'],
+  joinedDate: '2026-10-08',
+  responseTime: 'Demo replies only',
+  badges: ['Demo profile'],
   activePlan: 'FREE_18',
-  mtnMomoNumber: '0765326279',
-  mtnMomoName: 'VIOLA BABIRYE NAMULI',
-  airtelMoneyNumber: '0754687918',
-  airtelMoneyName: 'MUSA KINTU',
+  mtnMomoNumber: '',
+  mtnMomoName: '',
+  airtelMoneyNumber: '',
+  airtelMoneyName: '',
   momoPayMerchantCode: '',
-  directPayoutsEnabled: true,
-  completedSales: [
-    {
-      id: 'sale_01',
-      title: 'Samsung Galaxy S22 Ultra 256GB Phantom Black',
-      category: 'electronics',
-      price: 1950000,
-      soldDate: '2025-01-08T14:30:00Z',
-      buyerName: 'Grace Nabwire',
-      buyerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-      location: 'Acacia Mall, Kampala',
-      paymentMethod: 'MTN_MOMO',
-      referenceNumber: 'UG-MTN-8829104',
-    },
-    {
-      id: 'sale_02',
-      title: 'Solid Mahogany 6-Seater Dining Table Set',
-      category: 'furniture',
-      price: 1400000,
-      soldDate: '2024-12-22T11:00:00Z',
-      buyerName: 'Dr. Ronald Kasule',
-      location: 'Ntinda Ministers Village',
-      paymentMethod: 'AIRTEL_MONEY',
-      referenceNumber: 'UG-AIR-4712093',
-    },
-    {
-      id: 'sale_03',
-      title: 'Solar Backup Lithium Battery 100Ah 12V',
-      category: 'electronics',
-      price: 850000,
-      soldDate: '2024-12-10T16:15:00Z',
-      buyerName: 'David Tumusiime',
-      location: 'Kira Town, Wakiso',
-      paymentMethod: 'MTN_MOMO',
-      referenceNumber: 'UG-MTN-1092842',
-    }
-  ],
+  directPayoutsEnabled: false,
+  completedSales: [],
 };
 
 export const INITIAL_TESTIMONIALS: Record<string, Testimonial[]> = {
-  usr_me_001: [
-    {
-      id: 't_01',
-      authorName: 'Evelyn Namatovu',
-      authorTitle: 'Retail Buyer, Kampala Central',
-      authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80',
-      content: 'Brian was extremely honest about the condition of the smartphone. We tested the battery and camera together at Acacia Mall before I completed the MTN MoMo payment. Will definitely buy again!',
-      rating: 5,
-      verifiedMerchant: true,
-      date: '2025-01-09T10:00:00Z',
-    },
-    {
-      id: 't_02',
-      authorName: 'Patrick Ssenyonga',
-      authorTitle: 'Interior Decorator, Naalya',
-      authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80',
-      content: 'The craftsmanship on the sofa set ordered from his workshop exceeded expectations. Hardwood frame and stain-resistant fabric delivered straight to my client in Naalya.',
-      rating: 5,
-      verifiedMerchant: true,
-      date: '2024-12-26T15:30:00Z',
-    }
-  ],
+  usr_me_001: [],
   usr_seller_01: [
     {
       id: 't_03',
@@ -239,7 +182,7 @@ export const INITIAL_USER_PURCHASES: UserPurchase[] = [
     district: 'Kampala',
     purchaseDate: '2025-01-14T11:20:00Z',
     paymentMethod: 'MTN_MOMO',
-    referenceNumber: 'UG-MTN-998231',
+    referenceNumber: 'DEMO-MTN-001',
     status: 'COMPLETED',
     image: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
   },
@@ -254,7 +197,7 @@ export const INITIAL_USER_PURCHASES: UserPurchase[] = [
     district: 'Kampala',
     purchaseDate: '2025-01-08T16:45:00Z',
     paymentMethod: 'AIRTEL_MONEY',
-    referenceNumber: 'UG-AIR-554129',
+    referenceNumber: 'DEMO-AIR-002',
     status: 'COMPLETED',
     image: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=800&q=80',
   },
@@ -269,7 +212,7 @@ export const INITIAL_USER_PURCHASES: UserPurchase[] = [
     district: 'Wakiso',
     purchaseDate: '2024-11-19T09:15:00Z',
     paymentMethod: 'MTN_MOMO',
-    referenceNumber: 'UG-MTN-332145',
+    referenceNumber: 'DEMO-MTN-003',
     status: 'COMPLETED',
     image: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=800&q=80',
   }
@@ -299,8 +242,8 @@ export const MARKETPLACE_PRICING_PLANS: PricingPlan[] = [
     features: [
       'Pin 1 Ad to Top of Category & Search for 7 Days',
       'High-Visibility Featured Golden Badge',
-      '3x More Daily Buyer Inquiries & WhatsApp Clicks',
-      'Instant Push Notification to Nearby Buyers'
+      'Featured placement preview; no traffic metrics are measured',
+      'Sample notifications in this browser; no SMS is sent'
     ]
   },
   {
@@ -314,7 +257,7 @@ export const MARKETPLACE_PRICING_PLANS: PricingPlan[] = [
       'Post up to 22 Active Classified Ads',
       'Valid for 7 Days of Active Promotion',
       'Direct Buyer Messaging & Offer Negotiation',
-      'MTN MoMo & Airtel Escrow Purchase Protection'
+      'Simulated checkout only; no funds or escrow'
     ]
   },
   {
@@ -330,8 +273,8 @@ export const MARKETPLACE_PRICING_PLANS: PricingPlan[] = [
       'Post up to 40 Active Classified Ads',
       'Valid for 30 Full Days of Exposure',
       'Includes 2 Free Weekly Ad Boosts (Value UGX 20k)',
-      'Verified Seller Priority Placement in Search',
-      'Advanced Inventory Analytics & Lead Tracking'
+      'Sample placement only; identity is not checked',
+      'Sample seller analytics; no buyer leads are tracked'
     ]
   },
   {
@@ -341,13 +284,13 @@ export const MARKETPLACE_PRICING_PLANS: PricingPlan[] = [
     adsCount: 'unlimited',
     duration: 'Lifetime',
     priceUGX: 65000,
-    badge: 'One-Time Payment - No Renewals',
+    badge: 'Demo plan · no payment',
     features: [
       'Unlimited Ads Forever (No expiration date)',
-      'Permanent Golden PRO Merchant Badge',
-      'Priority Algorithm Ranking on all Searches',
-      'Instant Push & SMS Alerts for Buyer Leads',
-      'Dedicated Ugandan Seller Account Manager'
+      'Demo PRO badge styling only',
+      'Sample search placement preview',
+      'Sample notifications only; no SMS or buyer leads are sent',
+      'Seller support is not connected in this demo'
     ]
   }
 ];
@@ -372,7 +315,7 @@ export const INITIAL_SELLERS: User[] = [
     hasBiometrics: true,
     joinedDate: '2022-08-10',
     responseTime: '< 10 mins',
-    badges: ['ID Verified (NIN)', 'PRO Merchant', 'Top Rated 2024'],
+    badges: ['Sample badge', 'PRO Merchant', 'Top Rated 2024'],
   },
   {
     id: 'usr_seller_02',
@@ -414,7 +357,7 @@ export const INITIAL_SELLERS: User[] = [
     hasBiometrics: true,
     joinedDate: '2022-03-20',
     responseTime: '< 15 mins',
-    badges: ['Certified Agro Supplier', 'ID Verified (NIN)', 'Fast Dispatch'],
+    badges: ['Certified Agro Supplier', 'Sample badge', 'Fast Dispatch'],
   },
   {
     id: 'usr_seller_04',
@@ -434,7 +377,7 @@ export const INITIAL_SELLERS: User[] = [
     hasBiometrics: false,
     joinedDate: '2023-09-14',
     responseTime: '< 45 mins',
-    badges: ['Solar Specialist', 'ID Verified (NIN)'],
+    badges: ['Solar Specialist', 'Sample badge'],
   },
   {
     id: 'usr_seller_05',
@@ -455,7 +398,7 @@ export const INITIAL_SELLERS: User[] = [
     hasBiometrics: true,
     joinedDate: '2023-02-11',
     responseTime: '< 20 mins',
-    badges: ['Fashion Designer', 'ID Verified (NIN)'],
+    badges: ['Fashion Designer', 'Sample badge'],
   },
 ];
 
@@ -1005,7 +948,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
         senderId: 'usr_me_001',
         senderName: 'Brian Kigozi',
         recipientId: 'usr_seller_01',
-        text: 'Offer: UGX 2,400,000 cash or instant MTN MoMo payment.',
+        text: 'Demo offer: UGX 2,400,000 for this sample listing. No payment request is sent.',
         timestamp: '2025-01-14T11:32:00Z',
         isOffer: true,
         offerAmount: 2400000,

@@ -131,13 +131,13 @@ export const LifetimeSubscriptionModal: React.FC<LifetimeSubscriptionModalProps>
                 onClick={() => onProceedToPayment(PRO_PRICE_UGX)}
                 className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-600 hover:to-amber-500 active:scale-[0.99] text-slate-950 font-black text-sm shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <span>Upgrade with MTN MoMo / Airtel Money</span>
+                <span>Preview the demo plan</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             )}
 
             <p className="text-center text-[11px] text-slate-400 mt-2">
-              Instant activation via MTN Mobile Money or Airtel Money USSD.
+              Demo preview only: no USSD prompt, mobile money request, or payment is initiated.
             </p>
           </div>
         </div>

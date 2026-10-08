@@ -113,12 +113,30 @@ export default function App() {
     const saved = localStorage.getItem('shoplocal_current_user');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        return { 
-          ...INITIAL_CURRENT_USER, 
-          ...parsed, 
-          businessName: parsed.businessName || 'Prime Sanitary Centre',
-          email: parsed.email || 'skylovecruz85@gmail.com' 
+        const parsed = JSON.parse(saved) as User;
+        const hasLegacySeedDetails =
+          parsed.id === INITIAL_CURRENT_USER.id &&
+          (parsed.isVerified ||
+            Boolean(parsed.ninNumber) ||
+            Boolean(parsed.mtnMomoNumber) ||
+            Boolean(parsed.airtelMoneyNumber));
+        const merged = hasLegacySeedDetails
+          ? { ...INITIAL_CURRENT_USER, freeListingsUsed: parsed.freeListingsUsed ?? INITIAL_CURRENT_USER.freeListingsUsed }
+          : { ...INITIAL_CURRENT_USER, ...parsed };
+
+        return {
+          ...merged,
+          isVerified: false,
+          verificationStatus: 'UNVERIFIED',
+          ninNumber: undefined,
+          isPhoneVerified: false,
+          mtnMomoNumber: '',
+          mtnMomoName: '',
+          airtelMoneyNumber: '',
+          airtelMoneyName: '',
+          momoPayMerchantCode: '',
+          directPayoutsEnabled: false,
+          badges: (merged.badges ?? []).filter((badge) => !/verified|nin/i.test(badge)),
         };
       } catch (e) {}
     }
@@ -145,8 +163,8 @@ export default function App() {
     return saved ? JSON.parse(saved) : [
       {
         id: 'notif_welcome',
-        title: 'Welcome to ShopLocal Ug! 🇺🇬',
-        body: 'Enjoy 18 free listings for small business owners and instant MTN MoMo / Airtel Money payouts.',
+        title: 'Welcome to the ShopLocal UG demo',
+        body: 'Browse sample listings, try the account and chat flows, and preview simulated checkout. No live payments or identity checks run.',
         type: 'system',
         timestamp: new Date().toISOString(),
         read: false,
@@ -291,7 +309,7 @@ export default function App() {
       return false;
     }
 
-    // Verified sellers filter (either toggle or feed tab)
+    // Sample badge filter (either toggle or feed tab)
     if ((verifiedOnly || feedTab === 'verified') && !item.seller.isVerified) {
       return false;
     }
@@ -569,8 +587,8 @@ export default function App() {
   const handleSimulateOffer = () => {
     triggerPushNotification({
       id: 'sim_off_' + Date.now(),
-      title: 'Counter-Offer: UGX 1,200,000 from Grace Nabwire',
-      body: 'Buyer sent an offer of UGX 1,200,000 for your listed item. Ready for instant MTN MoMo payment.',
+  title: 'Sample counter-offer · UGX 1,200,000',
+  body: 'A sample buyer offer is shown for preview only. No seller was contacted and no payment can be made.',
       type: 'offer',
       timestamp: new Date().toISOString(),
       read: false,
@@ -1148,17 +1166,17 @@ export default function App() {
                 {/* Right Mini Promo Box */}
                 <div className="bg-black/15 backdrop-blur-xs border border-white/20 rounded-xl p-3 text-white max-w-xs w-full space-y-1 hidden sm:block">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-amber-200">ShopLocal Ug Verified Trading</span>
+                    <span className="text-amber-200">ShopLocal UG demo</span>
                     <span className="bg-white/20 px-2 py-0.5 rounded text-[10px]">
                       {currentUser.isProMember ? 'PRO' : `${currentUser.freeListingsUsed} / ${currentUser.freeListingsTotal}`}
                     </span>
                   </div>
                   <p className="text-[11px] text-emerald-50 leading-tight">
-                    ShopLocal Ug · Uganda's #1 verified classifieds & small business trading network!
+                    Browse sample listings, try an account, and preview chat and checkout. All activity stays in this browser.
                   </p>
                   <div className="pt-1 text-[10px] flex items-center justify-between text-emerald-100 border-t border-white/10">
-                    <span>MTN MoMo: Active</span>
-                    <span>Airtel Money: Active</span>
+                    <span>MTN demo: simulated</span>
+                    <span>Airtel demo: simulated</span>
                   </div>
                 </div>
               </div>
@@ -1280,7 +1298,7 @@ export default function App() {
                   }`}
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Verified Sellers Only</span>
+                  <span>Sample Badges Only</span>
                 </button>
 
                 <button
@@ -1376,7 +1394,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <Flame className="w-4 h-4 text-[#ff7e00]" />
                 <h2 className="font-display font-black text-sm sm:text-base text-[#222222]">
-                  {feedTab === 'trending' ? 'Trending Ads' : feedTab === 'recent' ? 'Recent / Fresh Ads' : feedTab === 'verified' ? 'Verified Sellers Ads' : 'Great Deals'}
+                  {feedTab === 'trending' ? 'Trending Ads' : feedTab === 'recent' ? 'Recent / Fresh Ads' : feedTab === 'verified' ? 'Sample Badge Ads' : 'Great Deals'}
                 </h2>
                 <span className="text-xs font-bold text-[#00B53F] bg-[#00B53F]/10 px-2 py-0.5 rounded-full">
                   {sortedListings.length}

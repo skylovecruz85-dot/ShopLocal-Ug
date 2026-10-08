@@ -64,7 +64,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 <span>Seller Alerts & Push Inquiries</span>
               </h3>
               <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Real-time buyer notifications & direct offers
+                Sample buyer notifications and offers
               </p>
             </div>
           </div>
@@ -107,9 +107,9 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             </button>
           </div>
 
-          {/* Real-time simulation triggers */}
+          {/* Demo notification previews */}
           <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-700">
-            <span className="text-[11px] text-slate-400 font-medium">Test Real-Time Push:</span>
+            <span className="text-[11px] text-slate-400 font-medium">Preview demo notifications:</span>
             <button
               onClick={onSimulateInquiry}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer flex items-center gap-1 ${

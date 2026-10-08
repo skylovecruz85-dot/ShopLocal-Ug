@@ -231,7 +231,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                         <span className="flex items-center text-amber-500 text-xs font-bold">
                           ★ {listing.seller.rating.toFixed(1)}
                         </span>
-                        <span className="text-slate-400 text-xs">({listing.seller.reviewCount} reviews)</span>
+                        <span className="text-slate-400 text-xs">({listing.seller.reviewCount} sample reviews)</span>
                       </div>
                     </div>
                   </div>

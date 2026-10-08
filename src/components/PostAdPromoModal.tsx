@@ -68,7 +68,7 @@ export const PostAdPromoModal: React.FC<PostAdPromoModalProps> = ({
           {/* Subtitle */}
           <div>
             <p className="text-[12px] text-[#9E9E9E]">
-              Choose a promotion type for your ad to post it
+              Preview a promotion for your new listing. No live payment is processed.
             </p>
             {adTitle && (
               <p className="text-[11px] text-[#00C853] font-medium mt-1 truncate">
@@ -91,7 +91,7 @@ export const PostAdPromoModal: React.FC<PostAdPromoModalProps> = ({
                 TOP promo
               </h3>
               <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
-                Best choice if you need one fast sale. Your ad will be at the top of search results and get 13X more traffic
+                Preview a top-of-search placement; performance is not measured in this demo.
               </p>
             </div>
 
@@ -157,7 +157,7 @@ export const PostAdPromoModal: React.FC<PostAdPromoModalProps> = ({
                 Boost Premium promo
               </h3>
               <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
-                Best choice if you want to post more ads. Allows up to 40 ads in Repair & Construction and gives 5X more traffic for all of them
+                Preview a featured placement; no traffic or conversion metrics are tracked in this demo.
               </p>
             </div>
 
@@ -185,7 +185,7 @@ export const PostAdPromoModal: React.FC<PostAdPromoModalProps> = ({
               }}
               className="w-full h-[50px] rounded-[8px] bg-[#00E676] hover:bg-[#00C853] text-black font-extrabold text-[14px] flex items-center justify-center transition-all cursor-pointer shadow-md"
             >
-              Buy promo &amp; Post ad (USh {currentPrice.toLocaleString()})
+              Preview boost &amp; post ad (USh {currentPrice.toLocaleString()})
             </button>
 
             <button

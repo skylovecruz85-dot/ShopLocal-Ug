@@ -138,7 +138,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
               }`}
             >
               <Flame className="w-3.5 h-3.5 text-white fill-white" />
-              <span>ShopLocal Promo Options</span>
+              <span>Ad Boosts</span>
             </button>
 
             <button
@@ -241,7 +241,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
           <div className="p-4 sm:p-5 space-y-3.5 bg-[#121212] text-white animate-in fade-in max-h-[82vh] overflow-y-auto">
             <div className="pb-0.5">
               <p className="text-[12px] text-[#9E9E9E]">
-                Preview a promotion for your selected ad. No live payment is processed.
+                Choose a boost, pay directly by mobile money, then submit your SMS proof for private admin review.
               </p>
               {selectedBoostListingTitle && (
                 <p className="text-[11px] text-[#00C853] font-medium mt-1 truncate">
@@ -261,7 +261,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
             >
               <div>
                 <h5 className="text-[14px] font-bold text-white leading-tight">
-                  TOP promo
+TOP placement
                 </h5>
                 <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
                   Preview a top-of-search placement; performance is not measured in this demo.
@@ -327,7 +327,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
             >
               <div>
                 <h5 className="text-[14px] font-bold text-white leading-tight">
-                  Boost Premium promo
+                  Boost Premium
                 </h5>
                 <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
                   Preview a featured placement; no traffic or conversion metrics are tracked in this demo.

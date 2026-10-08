@@ -1,11 +1,25 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { createBoostOrdersHandler } from './api/boost-orders';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
+
+function localBoostOrdersApi(): Plugin {
+  return {
+    name: 'shoplocal-boost-orders-api',
+    configureServer(server) {
+      const env = loadEnv(server.config.mode, process.cwd(), '');
+      const handler = createBoostOrdersHandler(env);
+      server.middlewares.use('/api/boost-orders', (request, response, next) => {
+        void handler(request, response).catch(next);
+      });
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), localBoostOrdersApi()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

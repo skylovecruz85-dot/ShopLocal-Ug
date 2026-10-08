@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { onAuthStateChanged, signOut, type User as FirebaseUser } from 'firebase/auth';
 import { firebaseAuth, firebaseProfileStorageKey } from './config/firebase';
 import { 
@@ -61,7 +62,7 @@ import { JijiSafetyBanner } from './components/JijiSafetyBanner';
 import { ListingCard } from './components/ListingCard';
 import { ListingDetailModal } from './components/ListingDetailModal';
 import { PostAdModal } from './components/PostAdModal';
-import { PromoSelection } from './components/PostAdPromoModal';
+import { ManualBoostPaymentModal, type ManualBoostPaymentConfig, type ManualBoostSubmission } from './components/ManualBoostPaymentModal';
 import { ChatModal } from './components/ChatModal';
 import { MomoPaymentModal } from './components/MomoPaymentModal';
 import { PricingPlansModal } from './components/PricingPlansModal';
@@ -78,14 +79,7 @@ import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { RecentlyViewed } from './components/RecentlyViewed';
 
 export default function App() {
-  // Dark mode state - explicitly force light mode default on load
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('shoplocal_theme');
-    if (saved === 'dark') {
-      localStorage.setItem('shoplocal_theme', 'light');
-    }
-    return false;
-  });
+  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('shoplocal_theme') === 'dark');
 
   useEffect(() => {
     if (darkMode) {
@@ -179,33 +173,9 @@ export default function App() {
   const [viewProfileUser, setViewProfileUser] = useState<User | null>(null);
   const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
 
-  // Manual Boost Orders state (Admin verification & User payment)
-  const [boostOrders, setBoostOrders] = useState<BoostOrder[]>(() => {
-    const saved = localStorage.getItem('shoplocal_boost_orders');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {}
-    }
-    return [
-      {
-        id: 'boost_seed_01',
-        adTitle: 'Toyota Harrier 2018 Pearl White (Mint Condition)',
-        userPhone: '0772849201',
-        plan: '7 days',
-        amount: 9500,
-        network: 'MTN',
-        payerNumber: '0772849201',
-        txnId: '1948201840',
-        time: new Date(Date.now() - 3600000).toISOString(),
-        status: 'Pending',
-        listingId: 'list_001',
-      }
-    ];
-  });
-
   const [isAdminBoostOrdersOpen, setIsAdminBoostOrdersOpen] = useState(false);
+  const [manualBoostConfig, setManualBoostConfig] = useState<ManualBoostPaymentConfig | null>(null);
+  const [reviewingBoostOrderId, setReviewingBoostOrderId] = useState<string | null>(null);
 
   // MoMo payment modal state
   const [momoModalConfig, setMomoModalConfig] = useState<{
@@ -221,6 +191,33 @@ export default function App() {
     purpose: 'BOOST_LISTING',
   });
 
+  const boostOrdersKey = firebaseAuthReady && firebaseUser
+    ? ['/api/boost-orders', firebaseUser.uid] as const
+    : null;
+  const {
+    data: boostOrdersData,
+    error: boostOrdersError,
+    isLoading: isBoostOrdersLoading,
+    mutate: mutateBoostOrders,
+  } = useSWR<{ orders: BoostOrder[]; canReview: boolean }, Error>(
+    boostOrdersKey,
+    async ([url, uid]) => {
+      const signedInUser = firebaseAuth?.currentUser;
+      if (!signedInUser || signedInUser.uid !== uid) throw new Error('Sign in again to load payment submissions.');
+      const token = await signedInUser.getIdToken();
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      const result = await response.json().catch(() => null) as { orders?: BoostOrder[]; canReview?: boolean; error?: string } | null;
+      if (!response.ok) throw new Error(result?.error || 'Payment submissions could not be loaded.');
+      return { orders: result?.orders ?? [], canReview: result?.canReview === true };
+    },
+    { revalidateOnFocus: true, revalidateOnReconnect: true, shouldRetryOnError: false },
+  );
+  const boostOrders = boostOrdersData?.orders ?? [];
+  const canReviewBoostOrders = boostOrdersData?.canReview === true;
+
   useEffect(() => {
     if (!firebaseAuth) {
       setFirebaseAuthReady(true);
@@ -229,6 +226,10 @@ export default function App() {
 
     return onAuthStateChanged(firebaseAuth, (user) => {
       setFirebaseUser(user);
+      if (!user) {
+        setIsAdminBoostOrdersOpen(false);
+        setManualBoostConfig(null);
+      }
       if (user) {
         let savedProfile: User | null = null;
         try {
@@ -280,10 +281,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('shoplocal_reviews', JSON.stringify(reviews));
   }, [reviews]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_boost_orders', JSON.stringify(boostOrders));
-  }, [boostOrders]);
 
   useEffect(() => {
     localStorage.setItem('shoplocal_favorites', JSON.stringify(favorites));
@@ -618,10 +615,7 @@ export default function App() {
   };
 
   // Post Ad Submission (with Free 18 check & driving to promo purchases when selected)
-  const handlePostAd = (
-    newAdData: Partial<Listing>,
-    promoOption?: PromoSelection
-  ) => {
+  const handlePostAd = (newAdData: Partial<Listing>) => {
     // Check if free 18 ads are done and user is not pro/subscribed
     if (!currentUser.isProMember && currentUser.freeListingsUsed >= currentUser.freeListingsTotal) {
       setIsPostAdOpen(false);
@@ -667,28 +661,14 @@ export default function App() {
 
     setIsPostAdOpen(false);
 
-    if (promoOption) {
-      const promoLabel = promoOption.type === 'TOP'
-        ? `${promoOption.durationDays}-day TOP placement`
-        : 'Premium boost';
-      setSelectedBoostListing(newListing);
-      setMomoModalConfig({
-        isOpen: true,
-        amount: promoOption.priceUGX,
-        purpose: 'BOOST_LISTING',
-        itemTitle: `${newListing.title} · ${promoLabel}`,
-        listingId: newListing.id,
-      });
-    } else {
-      triggerPushNotification({
-        id: `notif_post_${Date.now()}`,
-        title: 'Demo listing published',
-        body: `"${newListing.title}" is now visible in this browser's marketplace preview. No listing was sent to a server.`,
-        type: 'boost',
-        timestamp: new Date().toISOString(),
-        read: false,
-      });
-    }
+    triggerPushNotification({
+      id: `notif_post_${Date.now()}`,
+      title: 'Ad posted',
+      body: `"${newListing.title}" is visible in this browser. Open Seller Studio if you want to request a paid boost.`,
+      type: 'system',
+      timestamp: new Date().toISOString(),
+      read: false,
+    });
   };
 
   const handlePaymentSuccess = (transaction: PaymentTransaction) => {
@@ -805,16 +785,10 @@ export default function App() {
     });
   };
 
-  // Boost listing trigger
   const handleTriggerBoost = (listing: Listing) => {
+    setIsDashboardOpen(false);
     setSelectedBoostListing(listing);
-    setMomoModalConfig({
-      isOpen: true,
-      amount: 10000,
-      purpose: 'BOOST_LISTING',
-      itemTitle: `Weekly Boost: ${listing.title}`,
-      listingId: listing.id,
-    });
+    setIsPricingModalOpen(true);
   };
 
   const handleSelectPricingPlan = (plan: PricingPlan) => {
@@ -856,13 +830,14 @@ export default function App() {
     listingId?: string;
   }) => {
     const listingId = config.listingId || selectedBoostListing?.id;
-    if (!listingId) {
+    const listing = listings.find((item) => item.id === listingId);
+    if (!listing || listing.sellerId !== currentUser.id) {
       setIsPricingModalOpen(false);
       setIsDashboardOpen(true);
       triggerPushNotification({
         id: `notif_choose_listing_${Date.now()}`,
-        title: 'Choose one of your listings first',
-        body: 'Open Seller Studio and select one of your own listings to preview a boost.',
+        title: 'Choose one of your ads first',
+        body: 'Open Seller Studio and choose one of your own ads before requesting a boost.',
         type: 'system',
         timestamp: new Date().toISOString(),
         read: false,
@@ -870,60 +845,126 @@ export default function App() {
       return;
     }
 
+    setSelectedBoostListing(listing);
     setIsPricingModalOpen(false);
-    setMomoModalConfig({
-      isOpen: true,
+    setManualBoostConfig({
       amount: config.amount,
-      purpose: 'BOOST_LISTING',
-      itemTitle: `${config.adTitle || selectedBoostListing?.title || 'Selected listing'} · ${config.planName} preview`,
-      listingId,
+      planName: config.planName,
+      adTitle: listing.title,
+      listingId: listing.id,
     });
   };
 
-  // Admin approves boost order
-  const handleApproveBoostOrder = (orderId: string) => {
-    const targetOrder = boostOrders.find(o => o.id === orderId);
-    if (!targetOrder) return;
-
-    setBoostOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Approved' } : o));
-
-    // Activate TOP ad placement
-    if (targetOrder.listingId) {
-      setListings(prev => prev.map(l => l.id === targetOrder.listingId ? {
-        ...l,
-        isBoosted: true,
-        paymentStatus: 'APPROVED',
-      } : l));
-    } else {
-      // Find matching ad by title
-      setListings(prev => prev.map(l => l.title === targetOrder.adTitle ? {
-        ...l,
-        isBoosted: true,
-        paymentStatus: 'APPROVED',
-      } : l));
+  const handleSubmitManualBoost = async (submission: ManualBoostSubmission) => {
+    const config = manualBoostConfig;
+    const signedInUser = firebaseAuth?.currentUser;
+    if (!config) throw new Error('Choose an ad and boost plan before submitting payment details.');
+    if (!signedInUser?.phoneNumber || signedInUser.uid !== currentUser.id || signedInUser.uid !== firebaseUser?.uid) {
+      throw new Error('Sign in with a verified phone number before submitting payment details.');
     }
 
-    confetti({ particleCount: 70, spread: 60 });
-
-    triggerPushNotification({
-      id: 'notif_boost_approved_' + Date.now(),
-      title: '🌟 Ad Boost Approved! TOP Active',
-      body: `Boost payment for "${targetOrder.adTitle}" approved! Your ad is now in TOP search results.`,
-      type: 'boost',
-      timestamp: new Date().toISOString(),
-      read: false,
+    const token = await signedInUser.getIdToken();
+    const response = await fetch('/api/boost-orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        listingId: config.listingId,
+        adTitle: config.adTitle,
+        planName: config.planName,
+        network: submission.network,
+        payerNumber: submission.payerNumber,
+        transactionId: submission.transactionId,
+        screenshotDataUrl: submission.screenshotDataUrl,
+      }),
     });
+    const result = await response.json().catch(() => null) as { order?: BoostOrder; error?: string } | null;
+    if (!response.ok || !result?.order) {
+      throw new Error(result?.error || 'We could not submit the payment details. Please try again.');
+    }
+
+    const savedOrder = result.order;
+    await mutateBoostOrders((current) => ({
+      orders: [savedOrder, ...(current?.orders ?? []).filter((order) => order.id !== savedOrder.id)],
+      canReview: current?.canReview === true,
+    }), { revalidate: false });
+    setListings((previous) => previous.map((listing) => listing.id === config.listingId
+      ? { ...listing, paymentStatus: 'PENDING_PAYMENT' }
+      : listing));
   };
 
-  // Admin declines boost order
-  const handleDeclineBoostOrder = (orderId: string) => {
-    setBoostOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Declined' } : o));
+  const handleReviewBoostOrder = async (orderId: string, action: 'approve' | 'decline') => {
+    if (!canReviewBoostOrders) throw new Error('Admin review is not available for this account.');
+    const targetOrder = boostOrders.find((order) => order.id === orderId);
+    const signedInUser = firebaseAuth?.currentUser;
+    if (!targetOrder || !signedInUser) throw new Error('This payment submission could not be found.');
+
+    setReviewingBoostOrderId(orderId);
+    try {
+      const token = await signedInUser.getIdToken();
+      const response = await fetch('/api/boost-orders', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, action }),
+      });
+      const result = await response.json().catch(() => null) as { order?: BoostOrder; error?: string } | null;
+      if (!response.ok || !result?.order) {
+        throw new Error(result?.error || 'The payment review could not be saved. Refresh and try again.');
+      }
+
+      const reviewedOrder = result.order;
+      await mutateBoostOrders((current) => current
+        ? { ...current, orders: current.orders.map((order) => order.id === reviewedOrder.id ? reviewedOrder : order) }
+        : current, { revalidate: false });
+
+      if (action === 'approve') {
+        const boostedUntil = new Date(Date.now() + targetOrder.durationDays * 24 * 60 * 60 * 1000).toISOString();
+        setListings((previous) => previous.map((listing) => listing.id === targetOrder.listingId
+          ? { ...listing, isBoosted: true, paymentStatus: 'APPROVED', boostedUntil }
+          : listing));
+        confetti({ particleCount: 70, spread: 60 });
+      }
+    } finally {
+      setReviewingBoostOrderId(null);
+    }
+  };
+
+  const handleViewBoostProof = async (orderId: string) => {
+    if (!canReviewBoostOrders) throw new Error('Admin review is not available for this account.');
+    const signedInUser = firebaseAuth?.currentUser;
+    if (!signedInUser) throw new Error('Sign in again to view payment proof.');
+
+    const token = await signedInUser.getIdToken();
+    const response = await fetch(`/api/boost-orders?proof=${encodeURIComponent(orderId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(result?.error || 'Private payment proof could not be loaded.');
+    }
+    return URL.createObjectURL(await response.blob());
+  };
+
+  const handleRenewListing = (listingId: string) => {
+    const renewedAt = new Date().toISOString();
+    const listing = listings.find((item) => item.id === listingId && item.sellerId === currentUser.id && !item.isSold);
+    if (!listing) return;
+
+    setListings((previous) => previous.map((item) => item.id === listingId
+      ? { ...item, renewedAt, updatedAt: renewedAt, paymentStatus: 'ACTIVE' }
+      : item));
     triggerPushNotification({
-      id: 'notif_boost_declined_' + Date.now(),
-      title: 'Boost Order Declined',
-      body: 'Boost payment could not be matched with telecom transaction. Please check details.',
+      id: `notif_renew_${Date.now()}`,
+      title: 'Ad renewed',
+      body: `"${listing.title}" is renewed for another 30 days in this browser.`,
       type: 'system',
-      timestamp: new Date().toISOString(),
+      timestamp: renewedAt,
       read: false,
     });
   };

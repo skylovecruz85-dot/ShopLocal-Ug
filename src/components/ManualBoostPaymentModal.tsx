@@ -106,6 +106,7 @@ export const ManualBoostPaymentModal: React.FC<ManualBoostPaymentModalProps> = (
   const amountText = `USh ${config.amount.toLocaleString('en-UG')}`;
   const payeeNumber = network === 'MTN' ? PAYMENT_CONFIG.mtnMomo : PAYMENT_CONFIG.airtelMoney;
   const payeeName = network === 'MTN' ? PAYMENT_CONFIG.mtnName : PAYMENT_CONFIG.airtelName;
+  const paymentDestinationConfigured = Boolean(payeeNumber.trim() && payeeName.trim());
   const surface = darkMode ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-950';
   const muted = darkMode ? 'text-zinc-400' : 'text-zinc-600';
   const field = darkMode
@@ -116,6 +117,10 @@ export const ManualBoostPaymentModal: React.FC<ManualBoostPaymentModalProps> = (
     event.preventDefault();
     setErrorMessage(null);
 
+    if (!paymentDestinationConfigured) {
+      setErrorMessage(`${network} payment details are not configured yet. Do not send money until a verified receiver number is shown.`);
+      return;
+    }
     if (!isAuthenticated) {
       setErrorMessage('Sign in with a verified phone number before submitting payment details.');
       return;
@@ -169,13 +174,13 @@ export const ManualBoostPaymentModal: React.FC<ManualBoostPaymentModalProps> = (
               <CheckCircle2 className="size-8" aria-hidden="true" />
             </div>
             <div className="max-w-sm">
-              <h3 className="text-xl font-extrabold">Payment received</h3>
+              <h3 className="text-xl font-extrabold">Proof submitted for review</h3>
               <p className={`mt-2 text-sm leading-6 ${muted}`}>
-                We&apos;re verifying your transaction manually. Your ad will stay hidden from TOP until it is approved. Check Seller Studio for status updates.
+                Your submission is pending manual review. The app does not initiate the transfer; you pay the displayed mobile-money receiver directly. An admin reviews the transaction before approving your boost.
               </p>
             </div>
             <button type="button" onClick={onClose} className="mt-2 rounded-xl bg-[#00E676] px-6 py-3 text-sm font-extrabold text-black transition-colors hover:bg-[#00C853]">
-              Back to ShopLocal UG
+              Back to Seller Studio
             </button>
           </div>
         ) : (
@@ -204,15 +209,23 @@ export const ManualBoostPaymentModal: React.FC<ManualBoostPaymentModalProps> = (
                   <h3 className="text-base font-extrabold">Pay {amountText} to boost</h3>
                   <span className={`shrink-0 text-xs font-semibold ${muted}`}>{config.planName}</span>
                 </div>
-                {network === 'Airtel' && <p className="mt-3 text-xs font-bold uppercase tracking-wider text-red-600">Send Money</p>}
-                <ol className={`mt-3 list-inside list-decimal space-y-2 text-sm leading-5 ${darkMode ? 'text-zinc-200' : 'text-zinc-700'}`}>
-                  <li>Send {amountText} to <strong className="font-extrabold tracking-wide">{payeeNumber}</strong></li>
-                  <li>Name will show as: <strong className="font-extrabold">{payeeName}</strong></li>
-                  <li>Enter your payment details below after paying.</li>
-                </ol>
-                <p className={`mt-3 border-t pt-3 text-xs leading-5 ${darkMode ? 'border-zinc-800 text-zinc-400' : 'border-emerald-200 text-zinc-600'}`}>
-                  Send the money directly from your chosen mobile money wallet. ShopLocal does not collect it through an automated payment service.
-                </p>
+                {paymentDestinationConfigured ? (
+                  <>
+                    {network === 'Airtel' && <p className="mt-3 text-xs font-bold uppercase tracking-wider text-red-600">Send Money</p>}
+                    <ol className={`mt-3 list-inside list-decimal space-y-2 text-sm leading-5 ${darkMode ? 'text-zinc-200' : 'text-zinc-700'}`}>
+                      <li>Send {amountText} to <strong className="font-extrabold tracking-wide">{payeeNumber}</strong></li>
+                      <li>Confirm the receiver name is <strong className="font-extrabold">{payeeName}</strong></li>
+                      <li>After paying, submit the transaction ID and SMS screenshot below.</li>
+                    </ol>
+                    <p className={`mt-3 border-t pt-3 text-xs leading-5 ${darkMode ? 'border-zinc-800 text-zinc-400' : 'border-emerald-200 text-zinc-600'}`}>
+                      Send the money directly to the receiver shown above. This form only records your payment details and proof for review.
+                    </p>
+                  </>
+                ) : (
+                  <p role="alert" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm leading-5 text-amber-800 dark:text-amber-100">
+                    {network} receiving details are not configured yet. Do not send money until a verified number and account name appear here.
+                  </p>
+                )}
               </div>
 
               {!isAuthenticated && (
@@ -301,11 +314,11 @@ export const ManualBoostPaymentModal: React.FC<ManualBoostPaymentModalProps> = (
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !isAuthenticated}
+                disabled={isSubmitting || !isAuthenticated || !paymentDestinationConfigured}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#00E676] px-5 text-center text-sm font-extrabold text-black transition-colors hover:bg-[#00C853] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
-                {isSubmitting ? 'Submitting payment details…' : `I have paid ${amountText} to ShopLocal UG`}
+                {isSubmitting ? 'Submitting proof…' : 'Submit payment proof'}
               </button>
             </footer>
           </form>

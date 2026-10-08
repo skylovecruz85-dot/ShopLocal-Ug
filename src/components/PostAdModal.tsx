@@ -2,26 +2,22 @@ import React, { useState, useRef } from 'react';
 import { 
   X, 
   ArrowLeft, 
-  CheckCircle, 
   MapPin, 
   AlertCircle,
   Camera,
   Tag,
-  Layers,
-  Sparkles
+  Layers
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { CategoryId, ItemCondition, Listing, UgandaDistrict, User } from '../types';
 import { CATEGORIES, UGANDA_DISTRICTS } from '../data/mockData';
-import { PostAdPromoModal, PromoSelection } from './PostAdPromoModal';
 
 interface PostAdModalProps {
   currentUser: User;
   onClose: () => void;
-  onSubmit: (newListing: Partial<Listing>, promoOption?: PromoSelection) => void;
+  onSubmit: (newListing: Partial<Listing>) => void;
   onOpenProModal: () => void;
   darkMode?: boolean;
-  initialStep?: 'details' | 'promo';
 }
 
 export const PostAdModal: React.FC<PostAdModalProps> = ({
@@ -29,9 +25,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   onClose,
   onSubmit,
   onOpenProModal,
-  initialStep = 'details',
 }) => {
-  const [step, setStep] = useState<'details' | 'promo'>(initialStep);
   const [title, setTitle] = useState('');
   const [brand, setBrand] = useState('');
   const [type, setType] = useState('');
@@ -88,71 +82,32 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !price) {
+    if (!title.trim() || !price) {
       alert('Please fill in title and price.');
       return;
     }
-    setStep('promo');
-  };
 
-  if (step === 'promo') {
-    return (
-      <PostAdPromoModal
-        onBack={() => setStep('details')}
-        onClear={() => {
-          setTitle('');
-          setBrand('');
-          setType('');
-          setPrice('');
-          setPriceInput('');
-          setImages([]);
-          setDescription('');
-          setStep('details');
-        }}
-        onBuyPromoAndPost={(promo) => {
-          const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
-          const categoryName = CATEGORIES.find(c => c.id === category)?.name || 'General';
-          onSubmit({
-            title: title || 'Toyota Harrier 2018',
-            brand: brand.trim() || undefined,
-            type: type.trim() || undefined,
-            category,
-            subcategory: categoryName,
-            price: Number(price) || 68000000,
-            isNegotiable,
-            exchangePossible,
-            condition,
-            district,
-            locationDetails,
-            description: description || `Genuine ${title || 'Item'} available in ${district}. Direct seller contact with fast delivery across Uganda.`,
-            images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80'],
-            tags: parsedTags,
-          }, promo);
-        }}
-        onSaveAndPostLater={() => {
-          const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
-          const categoryName = CATEGORIES.find(c => c.id === category)?.name || 'General';
-          onSubmit({
-            title: title || 'Toyota Harrier 2018',
-            brand: brand.trim() || undefined,
-            type: type.trim() || undefined,
-            category,
-            subcategory: categoryName,
-            price: Number(price) || 68000000,
-            isNegotiable,
-            exchangePossible,
-            condition,
-            district,
-            locationDetails,
-            description: description || `Genuine ${title || 'Item'} available in ${district}. Direct seller contact with fast delivery across Uganda.`,
-            images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80'],
-            tags: parsedTags,
-          });
-        }}
-        adTitle={title}
-      />
-    );
-  }
+    const parsedTags = tags.split(',').map((tag) => tag.trim()).filter(Boolean);
+    const categoryName = CATEGORIES.find((item) => item.id === category)?.name || 'General';
+
+    confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+    onSubmit({
+      title: title.trim(),
+      brand: brand.trim() || undefined,
+      type: type.trim() || undefined,
+      category,
+      subcategory: categoryName,
+      price: Number(price),
+      isNegotiable,
+      exchangePossible,
+      condition,
+      district,
+      locationDetails,
+      description: description.trim() || `Genuine ${title.trim()}${brand.trim() ? ` (${brand.trim()})` : ''} available in ${district}. Direct seller contact with fast delivery across Uganda.`,
+      images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80'],
+      tags: parsedTags,
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
@@ -194,38 +149,6 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
           >
             <X className="w-5 h-5 text-white" />
           </button>
-        </div>
-
-        {/* 2-Step Navigation Indicator */}
-        <div className="flex items-center justify-between px-6 py-2.5 bg-zinc-900/90 border-b border-zinc-800 text-xs">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setStep('details')}
-              className="px-3 py-1 rounded-full text-xs font-bold bg-[#00B53F] text-white shadow-xs cursor-pointer"
-            >
-              1. Ad Details
-            </button>
-            <span className="text-zinc-600">→</span>
-            <button
-              type="button"
-              onClick={() => {
-                if (!title) setTitle('Toyota Harrier 2018');
-                if (!price) {
-                  setPrice(68000000);
-                  setPriceInput('68,000,000');
-                }
-                setStep('promo');
-              }}
-              className="px-3 py-1 rounded-full text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#00E676]" />
-              <span>2. Choose Promo (Jiji Screen)</span>
-            </button>
-          </div>
-          <span className="text-[11px] text-zinc-400 font-medium hidden sm:inline">
-            Step 1 of 2
-          </span>
         </div>
 
         {/* Free limit notice if reached */}
@@ -522,51 +445,12 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
             />
           </div>
 
-          {/* Submit Actions */}
-          <div className="pt-2 space-y-2.5">
-            {/* Primary: Next to Promo Screen */}
+          <div className="pt-2">
             <button
               type="submit"
               className="w-full h-[50px] rounded-[8px] bg-[#00E676] hover:bg-[#00C853] active:scale-[0.99] text-black font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider"
             >
-              <span>Next: Choose Promo &amp; Post ad →</span>
-            </button>
-
-            {/* Direct Free Post option */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!title || !price) {
-                  alert('Please fill in title and price.');
-                  return;
-                }
-                confetti({
-                  particleCount: 70,
-                  spread: 60,
-                  origin: { y: 0.6 },
-                });
-                const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
-                const categoryName = CATEGORIES.find(c => c.id === category)?.name || 'General';
-                onSubmit({
-                  title,
-                  brand: brand.trim() || undefined,
-                  type: type.trim() || undefined,
-                  category,
-                  subcategory: categoryName,
-                  price: Number(price),
-                  isNegotiable,
-                  exchangePossible,
-                  condition,
-                  district,
-                  locationDetails,
-                  description: description || `Genuine ${title}${brand ? ' (' + brand + ')' : ''} available in ${district}. Direct seller contact with fast delivery across Uganda.`,
-                  images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80'],
-                  tags: parsedTags,
-                });
-              }}
-              className="w-full py-2 text-xs text-zinc-400 hover:text-white font-medium text-center transition-colors cursor-pointer"
-            >
-              Or post immediately as standard free ad without promo
+              Post ad
             </button>
           </div>
         </form>

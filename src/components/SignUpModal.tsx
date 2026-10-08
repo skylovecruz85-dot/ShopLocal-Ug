@@ -367,7 +367,7 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
             </>
           )}
 
-          {formError && <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300" role="alert"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</p>}
+          {formError && <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold leading-5 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-50" role="alert"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</p>}
 
           <button
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"

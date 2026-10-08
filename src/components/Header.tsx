@@ -13,7 +13,8 @@ import {
   ChevronDown, 
   LogOut, 
   Settings,
-  Flame
+  Flame,
+  UserPlus
 } from 'lucide-react';
 import { User } from '../types';
 import { UGANDA_DISTRICTS } from '../data/mockData';
@@ -111,9 +112,12 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="text-[10px] font-black uppercase tracking-wider bg-[#00B53F] text-white px-1 py-0.2 rounded font-mono">
                     UG
                   </span>
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-amber-900">
+                    Demo
+                  </span>
                 </div>
                 <span className="text-[9px] text-[#757575] font-semibold tracking-tight -mt-0.5 hidden sm:block">
-                  Uganda's Verified Marketplace
+                  Interactive marketplace preview
                 </span>
               </div>
             </a>
@@ -203,7 +207,7 @@ export const Header: React.FC<HeaderProps> = ({
               {mobileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-72 rounded-2xl shadow-xl border border-slate-200 bg-white text-slate-800 py-2 z-50">
                   <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-[11px] text-slate-500 font-medium">Signed in as</p>
+                    <p className="text-[11px] text-slate-500 font-medium">Active demo profile</p>
                     <p className="text-xs font-bold truncate text-[#222222]">{currentUser.name}</p>
                     <p className="text-[11px] text-slate-500">{currentUser.phone}</p>
                   </div>
@@ -220,6 +224,14 @@ export const Header: React.FC<HeaderProps> = ({
                       <span className="text-[10px] bg-[#00B53F]/15 text-[#00B53F] font-bold px-1.5 py-0.5 rounded">
                         {currentUser.freeListingsUsed} Ads
                       </span>
+                    </button>
+
+                    <button
+                      onClick={() => { onOpenSignUp(); setMobileMenuOpen(false); }}
+                      className="w-full px-4 py-2 text-left text-xs font-semibold flex items-center gap-2 cursor-pointer hover:bg-slate-50"
+                    >
+                      <UserPlus className="w-4 h-4 text-[#00B53F]" />
+                      <span>Create another demo profile</span>
                     </button>
 
                     <button

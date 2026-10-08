@@ -213,6 +213,7 @@ export interface PaymentTransaction {
   amount: number;
   purpose: PaymentPurpose;
   status: 'PENDING' | 'COMPLETED' | 'FAILED';
+  isDemo?: boolean;
   date: string;
   itemTitle?: string;
   listingId?: string;

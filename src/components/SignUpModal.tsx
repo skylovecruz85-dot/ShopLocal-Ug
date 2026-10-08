@@ -1,17 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { 
-  X, 
-  Camera, 
-  Smartphone, 
-  Mail, 
-  User as UserIcon, 
-  MapPin, 
-  Lock, 
-  CheckCircle2, 
-  Sparkles,
-  Upload
-} from 'lucide-react';
-import confetti from 'canvas-confetti';
+import React, { useRef, useState } from 'react';
+import { AlertCircle, Camera, CheckCircle2, Info, Mail, MapPin, Smartphone, Upload, User as UserIcon, X } from 'lucide-react';
 import { User, UgandaDistrict } from '../types';
 import { UGANDA_DISTRICTS } from '../data/mockData';
 
@@ -21,325 +9,170 @@ interface SignUpModalProps {
   darkMode?: boolean;
 }
 
-export const SignUpModal: React.FC<SignUpModalProps> = ({
-  onClose,
-  onSignUpComplete,
-  darkMode,
-}) => {
+const isValidUgandanMobile = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  const nationalNumber = digits.startsWith('256')
+    ? digits.slice(3)
+    : digits.startsWith('0')
+      ? digits.slice(1)
+      : digits;
+  return /^7\d{8}$/.test(nationalNumber);
+};
+
+export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpComplete, darkMode = false }) => {
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('+256 7');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [district, setDistrict] = useState<UgandaDistrict>('Kampala');
-  const [pin, setPin] = useState('');
   const [avatar, setAvatar] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80');
+  const [formError, setFormError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Derive verification digits directly from entered email
-  const extractDigitsFromEmail = (emailStr: string): string => {
-    const clean = emailStr.trim();
-    if (!clean) return '';
-    // If the email has explicit numbers (e.g. cruz85@gmail.com -> 85, user2024 -> 2024)
-    const explicitDigits = clean.replace(/\D/g, '');
-    if (explicitDigits.length >= 4) {
-      return explicitDigits.slice(0, 4);
-    }
-    if (explicitDigits.length > 0) {
-      // Pad to 4 digits using deterministic hash from email
-      let hash = 0;
-      for (let i = 0; i < clean.length; i++) {
-        hash = (hash * 31 + clean.charCodeAt(i)) >>> 0;
-      }
-      const pad = String(hash % 10000).padStart(4, '0');
-      return (explicitDigits + pad).slice(0, 4);
-    }
-    // No explicit digits in email text, derive 4-digit code from email string
-    let hash = 0;
-    for (let i = 0; i < clean.length; i++) {
-      hash = (hash * 31 + clean.charCodeAt(i)) >>> 0;
-    }
-    return String((hash % 9000) + 1000);
-  };
-
-  const handleEmailChange = (val: string) => {
-    setEmail(val);
-    const derivedDigits = extractDigitsFromEmail(val);
-    if (derivedDigits) {
-      setPin(derivedDigits);
-    }
-  };
-
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      setFormError('Choose an image file for your profile photo.');
       return;
     }
+    if (file.size > 1024 * 1024) {
+      setFormError('Profile photos must be 1 MB or smaller in this demo.');
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result && typeof event.target.result === 'string') {
-        setAvatar(event.target.result);
+    reader.onload = (loadEvent) => {
+      if (typeof loadEvent.target?.result === 'string') {
+        setAvatar(loadEvent.target.result);
+        setFormError('');
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName.trim() || phone.length < 10) {
-      alert('Please enter your full name and a valid Ugandan phone number.');
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (fullName.trim().length < 2) {
+      setFormError('Enter a name with at least 2 characters.');
+      return;
+    }
+    if (!isValidUgandanMobile(phone)) {
+      setFormError('Enter a valid Ugandan mobile number, such as +256 772 000 000.');
       return;
     }
 
-    const finalDigits = pin || extractDigitsFromEmail(email) || '2025';
-
     const newUser: User = {
-      id: 'usr_' + Date.now(),
+      id: `usr_demo_${Date.now()}`,
       name: fullName.trim(),
       phone: phone.trim(),
-      email: email.trim() || `${fullName.toLowerCase().replace(/\s+/g, '')}@shoplocal.ug`,
+      email: email.trim(),
       avatar,
       district,
-      rating: 5.0,
+      rating: 0,
       reviewCount: 0,
-      isVerified: true,
-      verificationStatus: 'VERIFIED',
-      isPhoneVerified: true,
+      isVerified: false,
+      verificationStatus: 'UNVERIFIED',
+      isPhoneVerified: false,
       isProMember: false,
       freeListingsUsed: 0,
-      freeListingsTotal: 18, // 18 free listings for everyone
+      freeListingsTotal: 18,
       hasBiometrics: false,
       joinedDate: new Date().toISOString(),
-      responseTime: '< 15 mins',
-      badges: ['New Verified Merchant', '18 Free Listings Active'],
+      responseTime: 'Demo replies are simulated',
+      badges: ['Demo profile'],
       activePlan: 'FREE_18',
       completedSales: [],
     };
 
-    confetti({
-      particleCount: 90,
-      spread: 75,
-      origin: { y: 0.6 },
-    });
-
-    // Complete signup immediately without sign-in details screens, let account appear in profile
     onSignUpComplete(newUser);
   };
 
+  const inputClass = `w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 ${darkMode ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400'}`;
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div 
-        className={`rounded-3xl shadow-2xl max-w-md w-full overflow-hidden relative border transition-colors ${
-          darkMode ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
-        }`}
-        onClick={(e) => e.stopPropagation()}
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/65 p-3 backdrop-blur-sm">
+      <section
+        aria-labelledby="demo-signup-title"
+        aria-modal="true"
+        className={`my-auto w-full max-w-md overflow-hidden rounded-3xl border shadow-2xl ${darkMode ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`}
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
       >
-        {/* Top Header */}
-        <div className={`p-4 border-b flex items-center justify-between ${
-          darkMode ? 'border-slate-800 bg-slate-900/90' : 'border-slate-100 bg-white'
-        }`}>
+        <header className={`flex items-center justify-between border-b p-5 ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
           <div>
-            <h3 className="font-display font-black text-base text-slate-900 dark:text-white">
-              Join ShopLocal UG
-            </h3>
-            <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Get 18 Free Listings — Instant Account Setup
-            </p>
+            <h2 className="font-display text-lg font-black" id="demo-signup-title">Create a demo profile</h2>
+            <p className={`mt-0.5 text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Explore ShopLocal UG with a local sample account.</p>
           </div>
-
-          <button
-            onClick={onClose}
-            className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
-              darkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-400'
-            }`}
-          >
-            <X className="w-5 h-5" />
+          <button aria-label="Close signup" className={`rounded-xl p-2 ${darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-400 hover:bg-slate-100'}`} onClick={onClose} type="button">
+            <X className="size-5" />
           </button>
-        </div>
+        </header>
 
-        {/* Registration Form */}
-        <form onSubmit={handleFormSubmit} className="p-5 sm:p-6 space-y-4">
-          <div className={`p-3 rounded-2xl border text-xs flex items-center gap-2 ${
-            darkMode ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-          }`}>
-            <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>Includes <strong>18 FREE Listings</strong> for everyone (individuals & big businesses)!</span>
+        <form className="max-h-[78vh] space-y-4 overflow-y-auto p-5" onSubmit={handleFormSubmit}>
+          <div className={`flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed ${darkMode ? 'border-amber-900 bg-amber-950/40 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-950'}`} role="note">
+            <Info className="mt-0.5 size-4 shrink-0" />
+            <p><strong>Demo only.</strong> Your profile is saved in this browser. No password, email/SMS delivery, phone check, or identity verification is performed.</p>
           </div>
 
-          {/* Profile Picture Upload Access */}
-          <div className="flex flex-col items-center justify-center pb-1">
-            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <img
-                src={avatar}
-                alt="Profile Preview"
-                className="w-20 h-20 rounded-full object-cover ring-4 ring-[#3db83a]/30 shadow-md group-hover:opacity-80 transition-opacity"
-              />
-              <div className="absolute inset-0 rounded-full bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera className="w-5 h-5 text-white" />
-                <span className="text-[9px] font-bold text-white">Upload</span>
-              </div>
-              <button
-                type="button"
-                className="absolute bottom-0 right-0 bg-[#3db83a] hover:bg-[#34a331] text-white p-1.5 rounded-full shadow-md border-2 border-white dark:border-slate-800 cursor-pointer"
-                title="Upload Profile Picture"
-              >
-                <Camera className="w-3.5 h-3.5 text-white" />
-              </button>
-            </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*"
-              onChange={handleAvatarUpload}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] font-bold text-[#3db83a] hover:underline mt-1.5 flex items-center gap-1 cursor-pointer"
-            >
-              <Upload className="w-3 h-3" />
-              <span>Upload Profile Picture</span>
+          <div className="flex flex-col items-center">
+            <button aria-label="Choose profile photo" className="group relative rounded-full" onClick={() => fileInputRef.current?.click()} type="button">
+              <img alt="Profile preview" className="size-20 rounded-full object-cover ring-4 ring-emerald-500/20" src={avatar} />
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <Camera className="size-5" />
+              </span>
+            </button>
+            <input accept="image/*" className="hidden" onChange={handleAvatarUpload} ref={fileInputRef} type="file" />
+            <button className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400" onClick={() => fileInputRef.current?.click()} type="button">
+              <Upload className="size-3.5" /> Upload profile photo
             </button>
           </div>
 
-          {/* Full Name */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider mb-1 opacity-80">
-              Full Name / Business Name *
-            </label>
+            <label className="mb-1 block text-xs font-bold" htmlFor="demo-full-name">Full or business name</label>
             <div className="relative">
-              <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Sarah Nalubega / Kampala Agro Traders"
-                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 ${
-                  darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900'
-                }`}
-              />
+              <UserIcon className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input autoComplete="name" className={inputClass} id="demo-full-name" maxLength={80} minLength={2} onChange={(event) => setFullName(event.target.value)} placeholder="e.g. Sarah Nalubega" required value={fullName} />
             </div>
           </div>
 
-          {/* Phone */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider mb-1 opacity-80">
-              Uganda Phone Number (MTN / Airtel) *
-            </label>
+            <label className="mb-1 block text-xs font-bold" htmlFor="demo-phone">Ugandan mobile number</label>
             <div className="relative">
-              <Smartphone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+256 7..."
-                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 ${
-                  darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900'
-                }`}
-              />
+              <Smartphone className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input autoComplete="tel" className={inputClass} id="demo-phone" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
             </div>
           </div>
 
-          {/* Email Address */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-bold uppercase tracking-wider opacity-80">
-                Email Address *
-              </label>
-              {email && (
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                  ✓ Digits auto-extracted to PIN
-                </span>
-              )}
-            </div>
+            <label className="mb-1 block text-xs font-bold" htmlFor="demo-email">Email address</label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => handleEmailChange(e.target.value)}
-                placeholder="e.g. name85@gmail.com"
-                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 ${
-                  darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900'
-                }`}
-              />
+              <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input autoComplete="email" className={inputClass} id="demo-email" onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required type="email" value={email} />
             </div>
           </div>
 
-          {/* Primary Trading District */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider mb-1 opacity-80">
-              Primary Trading District *
-            </label>
+            <label className="mb-1 block text-xs font-bold" htmlFor="demo-district">Trading district</label>
             <div className="relative">
-              <MapPin className="w-4 h-4 text-emerald-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select
-                value={district}
-                onChange={(e) => setDistrict(e.target.value as UgandaDistrict)}
-                className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 ${
-                  darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
-                }`}
-              >
-                {UGANDA_DISTRICTS.filter(d => d !== 'All Uganda').map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
+              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-emerald-600" />
+              <select className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 ${darkMode ? 'border-slate-700 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-900'}`} id="demo-district" onChange={(event) => setDistrict(event.target.value as UgandaDistrict)} value={district}>
+                {UGANDA_DISTRICTS.filter((value) => value !== 'All Uganda').map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
           </div>
 
-          {/* 4-digit Account PIN (Digits from email) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-bold uppercase tracking-wider opacity-80">
-                Security PIN (Digits from Email) *
-              </label>
-              {pin && (
-                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                  From Email: {pin}
-                </span>
-              )}
-            </div>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                maxLength={6}
-                required
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                placeholder="Digits from your email"
-                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm tracking-widest font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 ${
-                  darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
-                }`}
-              />
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              {pin ? (
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                  ✓ Digits auto-filled from "{email || 'entered email'}": <strong>{pin}</strong>
-                </span>
-              ) : (
-                <span>Type your email above to automatically fill your security digits.</span>
-              )}
-            </p>
+          <div className={`rounded-xl border px-3 py-2.5 text-xs ${darkMode ? 'border-emerald-900 bg-emerald-950/35 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>
+            The sample profile includes an allowance of 18 demo listings. Changes stay in this browser.
           </div>
 
-          {/* Submit Button */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              className="w-full py-3.5 px-4 rounded-xl bg-[#3db83a] hover:bg-[#34a331] active:scale-[0.99] text-white font-extrabold text-sm shadow-md shadow-[#3db83a]/25 flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider"
-            >
-              <CheckCircle2 className="w-4 h-4 text-white" />
-              <span>Complete Sign Up & Open Profile</span>
-            </button>
-          </div>
+          {formError && <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300" role="alert"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</p>}
+
+          <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-emerald-700" type="submit">
+            <CheckCircle2 className="size-4" /> Create demo profile
+          </button>
         </form>
-      </div>
+      </section>
     </div>
   );
 };

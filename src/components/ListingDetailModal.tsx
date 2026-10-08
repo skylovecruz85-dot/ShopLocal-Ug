@@ -183,7 +183,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                 <ul className="list-disc list-inside space-y-0.5 text-amber-800">
                   <li>Meet in well-lit public places (e.g., Acacia Mall, Garden City, Posta Uganda).</li>
                   <li>Inspect and test items thoroughly before releasing funds.</li>
-                  <li>Use our <strong>MoMo Escrow</strong> option for secure payment protection.</li>
+                  <li>Checkout in this demo is simulated. Inspect items and agree on safe payment terms independently.</li>
                   <li>Do not send advance transport fare to unknown callers.</li>
                 </ul>
               </div>
@@ -206,7 +206,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                       {listing.seller.isVerified && (
                         <div 
                           className="absolute -bottom-1 -right-1 bg-amber-400 text-slate-950 rounded-full p-0.5 ring-2 ring-white dark:ring-slate-800 shadow-xs"
-                          title="Verified Ugandan Merchant"
+                          title="Sample badge from demo data"
                         >
                           <ShieldCheck className="w-3.5 h-3.5 stroke-[2.5]" />
                         </div>
@@ -247,7 +247,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                 <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700 grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
                   <div className="flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#3db83a]" />
-                    <span>NIN ID Verified</span>
+                    <span>{listing.seller.isVerified ? 'Sample badge' : 'Identity not checked in demo'}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-[#3db83a]" />
@@ -306,34 +306,19 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
 
               {/* Action Buttons */}
               <div className="space-y-2.5">
-                {/* Real-time chat & negotiate */}
+                {/* Demo chat & negotiate */}
                 <button
                   onClick={() => onOpenChat(listing)}
                   className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>Chat & Send Counter-Offer</span>
+                  <span>Try demo chat & offer</span>
                 </button>
 
-                {/* Call / WhatsApp Seller */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setShowPhone(!showPhone)}
-                    className="py-2.5 px-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-slate-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{showPhone ? listing.seller.phone : 'Show Phone'}</span>
-                  </button>
-
-                  <a
-                    href={`https://wa.me/${listing.seller.phone.replace(/\D/g, '')}?text=Hello,%20I%20saw%20your%20listing%20on%20ShopLocal%20Ug:%20${encodeURIComponent(listing.title)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold flex items-center justify-center gap-1.5 border border-emerald-200 transition-colors cursor-pointer"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>WhatsApp</span>
-                  </a>
+                <div className={`rounded-xl border p-3 text-xs leading-relaxed ${
+                  darkMode ? 'bg-slate-800/60 border-slate-700 text-slate-300' : 'bg-amber-50 border-amber-200 text-amber-900'
+                }`}>
+                  Seller phone and WhatsApp links are disabled in this preview. Use the in-app demo chat instead.
                 </div>
 
                 {/* Safety & Report row */}
@@ -386,13 +371,13 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
               <MessageSquare className="w-4 h-4 text-[#00B53F]" />
               <span>Chat</span>
             </button>
-            <a
-              href={`tel:${listing.seller.phone.replace(/\s+/g, '')}`}
+            <button
+              type="button"
+              onClick={() => onOpenUserProfile(listing.seller)}
               className="px-4 sm:px-5 py-2.5 rounded-xl bg-[#00B53F] hover:bg-[#009e37] text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
-              <Phone className="w-4 h-4 text-white" />
-              <span>Call</span>
-            </a>
+              <span>View profile</span>
+            </button>
           </div>
         </div>
       </div>

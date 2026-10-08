@@ -63,7 +63,6 @@ import { PromoSelection } from './components/PostAdPromoModal';
 import { ChatModal } from './components/ChatModal';
 import { MomoPaymentModal } from './components/MomoPaymentModal';
 import { PricingPlansModal } from './components/PricingPlansModal';
-import { ManualBoostPaymentModal } from './components/ManualBoostPaymentModal';
 import { AdminBoostOrdersModal } from './components/AdminBoostOrdersModal';
 import { BiometricAuthModal } from './components/BiometricAuthModal';
 import { SellerDashboard } from './components/SellerDashboard';
@@ -217,18 +216,6 @@ export default function App() {
   });
 
   const [isAdminBoostOrdersOpen, setIsAdminBoostOrdersOpen] = useState(false);
-  const [manualBoostModalConfig, setManualBoostModalConfig] = useState<{
-    isOpen: boolean;
-    amount: 9500 | 21500 | 28550 | number;
-    planName: '7 days' | '30 days' | 'Boost Premium';
-    adTitle: string;
-    listingId?: string;
-  }>({
-    isOpen: false,
-    amount: 9500,
-    planName: '7 days',
-    adTitle: '',
-  });
 
   // MoMo payment modal state
   const [momoModalConfig, setMomoModalConfig] = useState<{
@@ -238,8 +225,6 @@ export default function App() {
     itemTitle?: string;
     listingId?: string;
     sellerName?: string;
-    sellerMtnLine?: string;
-    sellerAirtelLine?: string;
   }>({
     isOpen: false,
     amount: 10000,
@@ -445,7 +430,6 @@ export default function App() {
     if (selectedListing) setSelectedListing(null);
   };
 
-  // Send message in chat with simulated real-time seller response
   const handleSendMessage = (conversationId: string, text: string, isOffer = false, offerAmount?: number) => {
     const updatedConversations = conversations.map((conv) => {
       if (conv.id === conversationId) {
@@ -481,9 +465,9 @@ export default function App() {
       const otherPartyName = targetConv.buyerId === currentUser.id ? targetConv.sellerName : targetConv.buyerName;
       const otherPartyId = targetConv.buyerId === currentUser.id ? targetConv.sellerId : targetConv.buyerId;
 
-      let replyText = `Thanks for getting in touch! Yes, this is ready for viewing in ${targetConv.listingTitle.includes('Mbarara') ? 'Mbarara' : 'Kampala'}.`;
+      let replyText = 'Sample seller reply: Thanks for reaching out. This conversation is part of the demo and is not delivered to a real seller.';
       if (isOffer && offerAmount) {
-        replyText = `Thank you for your offer of UGX ${offerAmount.toLocaleString()}! I can accept this deal. You can proceed with MTN MoMo / Airtel escrow or meet at Acacia Mall.`;
+        replyText = `Sample seller reply: Your offer of UGX ${offerAmount.toLocaleString()} is accepted for this preview. No agreement was made and no payment was processed.`;
       }
 
       const sellerReply = {
@@ -517,7 +501,7 @@ export default function App() {
       // Trigger actionable push alert
       triggerPushNotification({
         id: 'notif_reply_' + Date.now(),
-        title: `Message from ${otherPartyName}`,
+        title: `Demo reply from ${otherPartyName}`,
         body: replyText,
         type: isOffer ? 'offer' : 'message',
         timestamp: new Date().toISOString(),
@@ -525,8 +509,8 @@ export default function App() {
         conversationId,
         offerAmount: isOffer ? offerAmount : undefined,
         actions: isOffer ? [
-          { label: 'View Deal', actionKey: 'reply', style: 'primary' },
-          { label: 'Pay MoMo Escrow', actionKey: 'accept_offer', style: 'primary' },
+          { label: 'View sample offer', actionKey: 'reply', style: 'primary' },
+          { label: 'Preview checkout', actionKey: 'accept_offer', style: 'primary' },
         ] : [
           { label: 'Reply', actionKey: 'reply', style: 'primary' },
         ],
@@ -555,7 +539,14 @@ export default function App() {
         });
       }
     } else if (actionKey === 'decline_offer') {
-      alert('Offer was marked as declined. Buyer has been notified.');
+      triggerPushNotification({
+        id: `notif_demo_offer_declined_${Date.now()}`,
+        title: 'Demo offer dismissed',
+        body: 'The sample offer was dismissed in this browser. No buyer was contacted.',
+        type: 'offer',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
     }
   };
 
@@ -563,8 +554,8 @@ export default function App() {
   const handleSimulateInquiry = () => {
     triggerPushNotification({
       id: 'sim_inq_' + Date.now(),
-      title: 'New Buyer Inquiry from Patrick Mugisha',
-      body: 'Hello Brian! Is the living room sofa set still in stock? Can you deliver to Naalya or Kira town today?',
+      title: 'Sample buyer inquiry',
+      body: 'Is the sample sofa still available? This preview message does not contact a seller.',
       type: 'message',
       timestamp: new Date().toISOString(),
       read: false,
@@ -605,15 +596,14 @@ export default function App() {
       return;
     }
 
-    const isBoosted = !!promoOption || currentUser.isProMember;
-
+    const isBoosted = currentUser.isProMember;
     const newListing: Listing = {
-      id: 'list_' + Date.now(),
+      id: `list_demo_${Date.now()}`,
       sellerId: currentUser.id,
       seller: currentUser,
-      title: newAdData.title || '',
-      description: newAdData.description || '',
-      price: newAdData.price || 0,
+      title: newAdData.title?.trim() || '',
+      description: newAdData.description?.trim() || '',
+      price: Number(newAdData.price) || 0,
       isNegotiable: newAdData.isNegotiable ?? true,
       exchangePossible: newAdData.exchangePossible ?? false,
       category: newAdData.category || 'agriculture',
@@ -621,70 +611,68 @@ export default function App() {
       condition: newAdData.condition || 'Brand New',
       district: newAdData.district || 'Kampala',
       locationDetails: newAdData.locationDetails || 'Kampala Central',
-      images: newAdData.images && newAdData.images.length > 0 ? newAdData.images : ['https://images.unsplash.com/photo-1603052875302-d376b7c0638a?auto=format&fit=crop&w=600&q=80'],
+      images: newAdData.images || [],
       views: 1,
       inquiriesCount: 0,
       isBoosted,
       isSold: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      tags: newAdData.tags || ['ShopLocalUg', 'Kampala'],
+      tags: newAdData.tags || [],
       brand: newAdData.brand,
       type: newAdData.type,
     };
 
-    setListings([newListing, ...listings]);
+    setListings(prev => [newListing, ...prev]);
 
     if (!currentUser.isProMember) {
-      setCurrentUser({
-        ...currentUser,
-        freeListingsUsed: currentUser.freeListingsUsed + 1,
-      });
+      setCurrentUser(prev => ({
+        ...prev,
+        freeListingsUsed: prev.freeListingsUsed + 1,
+      }));
     }
 
     setIsPostAdOpen(false);
 
     if (promoOption) {
-      // Open Manual Boost Payment Modal directly (MTN & Airtel)
-      const promoPlanName: '7 days' | '30 days' | 'Boost Premium' = 
-        promoOption.type === 'TOP' ? (promoOption.durationDays === 7 ? '7 days' : '30 days') : 'Boost Premium';
-
-      // Set ad payment status to PENDING_PAYMENT (hidden from TOP until approved)
-      setListings(prev => prev.map(l => l.id === newListing.id ? { ...l, isBoosted: true, paymentStatus: 'PENDING_PAYMENT' } : l));
-
-      setManualBoostModalConfig({
+      const promoLabel = promoOption.type === 'TOP'
+        ? `${promoOption.durationDays}-day TOP placement`
+        : 'Premium boost';
+      setSelectedBoostListing(newListing);
+      setMomoModalConfig({
         isOpen: true,
         amount: promoOption.priceUGX,
-        planName: promoPlanName,
-        adTitle: newListing.title,
+        purpose: 'BOOST_LISTING',
+        itemTitle: `${newListing.title} · ${promoLabel}`,
         listingId: newListing.id,
       });
     } else {
       triggerPushNotification({
-        id: 'notif_post_' + Date.now(),
-        title: 'Ad Published Successfully! 🎉',
-        body: `"${newListing.title}" is now live on ShopLocal Ug. Want 13X more traffic? Activate TOP promo!`,
+        id: `notif_post_${Date.now()}`,
+        title: 'Demo listing published',
+        body: `"${newListing.title}" is now visible in this browser's marketplace preview. No listing was sent to a server.`,
         type: 'boost',
         timestamp: new Date().toISOString(),
         read: false,
-        actions: [
-          { label: 'TOP Promo', actionKey: 'boost', style: 'primary' },
-        ],
       });
     }
   };
 
-  // Payment Success Handler (Boost 10k, Weekly 22ads 18k, Monthly 40ads 30k, Unlimited 65k)
   const handlePaymentSuccess = (transaction: PaymentTransaction) => {
+    if (!transaction.isDemo) return;
+
     if (transaction.purpose === 'BOOST_LISTING') {
-      // Boost the specific listing or latest
-      const targetId = transaction.listingId || selectedBoostListing?.id || listings[0]?.id;
-      setListings(prev => prev.map(l => l.id === targetId ? { ...l, isBoosted: true } : l));
+      const targetId = transaction.listingId || selectedBoostListing?.id;
+      if (targetId) {
+        setListings(prev => prev.map(listing => listing.id === targetId ? { ...listing, isBoosted: true } : listing));
+      }
 
       triggerPushNotification({
-        id: 'notif_boost_' + Date.now(),
-        title: '🔥 Weekly Ad Boost Activated!',
-        body: `Your ad is now pinned to the top of its category with a golden badge for 7 days.`,
+        id: `notif_demo_boost_${Date.now()}`,
+        title: targetId ? 'Demo boost applied' : 'Demo checkout simulated',
+        body: targetId
+          ? `"${transaction.itemTitle || 'Your listing'}" is marked featured in this local preview. No funds moved.`
+          : 'Choose one of your own listings to preview a boost. No payment was processed.',
         type: 'boost',
         timestamp: new Date().toISOString(),
         read: false,
@@ -696,9 +684,9 @@ export default function App() {
         activePlan: 'WEEKLY_22',
       }));
       triggerPushNotification({
-        id: 'notif_pack_' + Date.now(),
-        title: 'Weekly Seller Pack (22 Ads) Unlocked!',
-        body: '22 additional active ads have been added to your merchant allowance.',
+        id: `notif_demo_pack_${Date.now()}`,
+        title: 'Demo seller pack applied',
+        body: 'The preview allowance increased by 22 listings in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
         read: false,
@@ -710,9 +698,9 @@ export default function App() {
         activePlan: 'MONTHLY_40',
       }));
       triggerPushNotification({
-        id: 'notif_pack_m_' + Date.now(),
-        title: 'Monthly Growth Pack (40 Ads) Unlocked!',
-        body: '40 additional ads plus 2 free weekly boosts are now active on your account.',
+        id: `notif_demo_pack_monthly_${Date.now()}`,
+        title: 'Demo monthly pack applied',
+        body: 'The preview allowance increased by 40 listings in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
         read: false,
@@ -723,34 +711,29 @@ export default function App() {
         isProMember: true,
         proMemberSince: new Date().toISOString(),
         activePlan: 'UNLIMITED_65',
-        badges: [...prev.badges, 'Lifetime PRO Merchant'],
+        badges: Array.from(new Set([...prev.badges, 'Demo PRO'])),
       }));
-      setListings(prev => prev.map(l => l.sellerId === currentUser.id ? { ...l, isBoosted: true } : l));
+      setListings(prev => prev.map(listing => listing.sellerId === currentUser.id ? { ...listing, isBoosted: true } : listing));
 
       triggerPushNotification({
-        id: 'notif_unlimited_' + Date.now(),
-        title: '👑 Lifetime Unlimited Pass Activated!',
-        body: 'You now enjoy unlimited lifetime ads, permanent PRO status, and priority algorithm ranking.',
+        id: `notif_demo_unlimited_${Date.now()}`,
+        title: 'Demo seller plan applied',
+        body: 'Preview seller features are enabled in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
         read: false,
       });
     } else if (transaction.purpose === 'ESCROW_PURCHASE') {
-      const recipientText = transaction.recipientPhoneNumber
-        ? `Credited directly to seller line: ${transaction.recipientPhoneNumber} (${transaction.recipientName}).`
-        : 'Payment received on seller line.';
-
       triggerPushNotification({
-        id: 'notif_escrow_' + Date.now(),
-        title: 'Payment Credited to Seller Line! 💰',
-        body: `UGX ${transaction.amount.toLocaleString()} received for "${transaction.itemTitle}". ${recipientText} Ref: ${transaction.reference}`,
+        id: `notif_demo_checkout_${Date.now()}`,
+        title: 'Demo checkout simulated',
+        body: `The preview checkout for "${transaction.itemTitle || 'this listing'}" completed locally. No seller was paid and no funds moved.`,
         type: 'payment',
         timestamp: new Date().toISOString(),
         read: false,
       });
     }
 
-    setMomoModalConfig(prev => ({ ...prev, isOpen: false }));
     setIsPricingModalOpen(false);
   };
 
@@ -769,8 +752,8 @@ export default function App() {
     }));
     triggerPushNotification({
       id: 'notif_payout_' + Date.now(),
-      title: 'Direct Payout Lines Saved! 📱',
-      body: `Buyer purchases will credit directly to your MTN (${updatedPayouts.mtnMomoNumber}) & Airtel (${updatedPayouts.airtelMoneyNumber}) lines.`,
+      title: 'Demo payout preferences saved',
+      body: 'These settings are stored in this browser only. No MTN or Airtel connection is active and no funds can be routed.',
       type: 'system',
       timestamp: new Date().toISOString(),
       read: false,
@@ -778,11 +761,11 @@ export default function App() {
   };
 
   const handleSimulateTestPayoutAlert = (network: 'MTN' | 'AIRTEL', number: string, amount: number) => {
-    const carrier = network === 'MTN' ? 'MTN MoMo' : 'Airtel Money';
+    const carrier = network === 'MTN' ? 'MTN' : 'Airtel';
     triggerPushNotification({
-      id: 'sim_payout_' + Date.now(),
-      title: `${carrier} Alert: UGX ${amount.toLocaleString()} Received! 💵`,
-      body: `You have received UGX ${amount.toLocaleString()} directly on your line ${number} from 0782XXXXXX. New MoMo balance updated. Ref: UG-${network}-984210.`,
+      id: `demo_payout_${Date.now()}`,
+      title: `Simulated ${carrier} alert`,
+      body: `Preview alert for UGX ${amount.toLocaleString()}. No transfer took place and no account balance changed.`,
       type: 'payment',
       timestamp: new Date().toISOString(),
       read: false,
@@ -801,12 +784,27 @@ export default function App() {
     });
   };
 
-  // Plan selected from PricingPlansModal
   const handleSelectPricingPlan = (plan: PricingPlan) => {
-    let purpose: PaymentPurpose = 'BOOST_LISTING';
-    if (plan.id === 'weekly_22') purpose = 'PACKAGE_WEEKLY';
-    if (plan.id === 'monthly_40') purpose = 'PACKAGE_MONTHLY';
-    if (plan.id === 'unlimited_65') purpose = 'PACKAGE_UNLIMITED';
+    const packagePurposes: Record<string, PaymentPurpose> = {
+      weekly_22: 'PACKAGE_WEEKLY',
+      monthly_40: 'PACKAGE_MONTHLY',
+      unlimited_65: 'PACKAGE_UNLIMITED',
+    };
+    const purpose = packagePurposes[plan.id] || 'BOOST_LISTING';
+
+    if (purpose === 'BOOST_LISTING' && !selectedBoostListing) {
+      setIsPricingModalOpen(false);
+      setIsDashboardOpen(true);
+      triggerPushNotification({
+        id: `notif_choose_listing_${Date.now()}`,
+        title: 'Choose one of your listings first',
+        body: 'Open Seller Studio and select one of your own listings to preview a boost.',
+        type: 'system',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      return;
+    }
 
     setMomoModalConfig({
       isOpen: true,
@@ -818,45 +816,34 @@ export default function App() {
     setIsPricingModalOpen(false);
   };
 
-  // Open manual boost modal from pricing plans modal
   const handleOpenManualBoost = (config: {
     amount: 9500 | 21500 | 28550;
     planName: '7 days' | '30 days' | 'Boost Premium';
     adTitle: string;
     listingId?: string;
   }) => {
-    setIsPricingModalOpen(false);
-    setManualBoostModalConfig({
-      isOpen: true,
-      amount: config.amount,
-      planName: config.planName,
-      adTitle: config.adTitle || selectedBoostListing?.title || 'My Ad',
-      listingId: config.listingId || selectedBoostListing?.id,
-    });
-  };
-
-  // When user clicks "I have paid"
-  const handleSubmitManualBoostOrder = (newOrder: BoostOrder) => {
-    // 1. Save to Admin > Boost Orders > Pending
-    setBoostOrders(prev => [newOrder, ...prev]);
-
-    // 2. Set listing status = PENDING PAYMENT, hidden from TOP until approved
-    if (newOrder.listingId) {
-      setListings(prev => prev.map(l => l.id === newOrder.listingId ? {
-        ...l,
-        isBoosted: true,
-        paymentStatus: 'PENDING_PAYMENT',
-      } : l));
+    const listingId = config.listingId || selectedBoostListing?.id;
+    if (!listingId) {
+      setIsPricingModalOpen(false);
+      setIsDashboardOpen(true);
+      triggerPushNotification({
+        id: `notif_choose_listing_${Date.now()}`,
+        title: 'Choose one of your listings first',
+        body: 'Open Seller Studio and select one of your own listings to preview a boost.',
+        type: 'system',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      return;
     }
 
-    // 3. User notification & push alert
-    triggerPushNotification({
-      id: 'notif_boost_pending_' + Date.now(),
-      title: 'Payment Received! ⏳',
-      body: `Payment received for "${newOrder.adTitle}". We are verifying with ${newOrder.network}. Your ad will be TOP within 5 minutes. You will get SMS.`,
-      type: 'payment',
-      timestamp: new Date().toISOString(),
-      read: false,
+    setIsPricingModalOpen(false);
+    setMomoModalConfig({
+      isOpen: true,
+      amount: config.amount,
+      purpose: 'BOOST_LISTING',
+      itemTitle: `${config.adTitle || selectedBoostListing?.title || 'Selected listing'} · ${config.planName} preview`,
+      listingId,
     });
   };
 
@@ -1132,13 +1119,13 @@ export default function App() {
               <div className="flex flex-col md:flex-row items-center justify-between gap-3 relative z-10 w-full">
                 <div className="space-y-1.5 text-center md:text-left max-w-xl">
                   <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-white text-[10px] font-bold">
-                    <span>🇺🇬 UGANDA'S #1 VERIFIED CLASSIFIEDS</span>
+                    <span>INTERACTIVE MARKETPLACE DEMO</span>
                   </div>
                   <h1 className="font-display font-black text-lg sm:text-2xl text-white tracking-tight leading-snug">
-                    Sell Faster & Buy Safely with <span className="text-amber-200">ShopLocal UG</span>
+                    Browse & sell locally with <span className="text-amber-200">ShopLocal UG</span>
                   </h1>
                   <p className="text-[11px] sm:text-xs text-emerald-50 leading-relaxed">
-                    <strong>ShopLocal Ug</strong> · Instant <strong>MTN MoMo & Airtel Money</strong> payouts · Direct buyer chat
+                    Sample listings and replies. Profiles and promotions stay in this browser; checkout is simulated and no money moves.
                   </p>
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
                     <button
@@ -1528,8 +1515,7 @@ export default function App() {
               itemTitle: item.title,
               listingId: item.id,
               sellerName: item.seller.name,
-              sellerMtnLine: item.seller.mtnMomoNumber || item.seller.phone,
-              sellerAirtelLine: item.seller.airtelMoneyNumber || '0701 445 921',
+
             });
           }}
           onOpenUserProfile={(u) => setViewProfileUser(u)}
@@ -1578,8 +1564,7 @@ export default function App() {
               itemTitle,
               listingId: activeConv?.listingId,
               sellerName: otherPartyName,
-              sellerMtnLine: currentUser.mtnMomoNumber || '0772 849 201',
-              sellerAirtelLine: currentUser.airtelMoneyNumber || '0701 445 921',
+
             });
           }}
           onOpenSafetyTips={() => setIsSafetyTipsOpen(true)}
@@ -1599,20 +1584,6 @@ export default function App() {
           selectedBoostListingTitle={selectedBoostListing?.title}
           selectedBoostListingId={selectedBoostListing?.id}
           onOpenManualBoost={handleOpenManualBoost}
-          darkMode={darkMode}
-        />
-      )}
-
-      {/* MODAL 4B: Manual Boost Payment Modal (MTN & Airtel Direct) */}
-      {manualBoostModalConfig.isOpen && (
-        <ManualBoostPaymentModal
-          amount={manualBoostModalConfig.amount}
-          planName={manualBoostModalConfig.planName}
-          adTitle={manualBoostModalConfig.adTitle}
-          userPhone={currentUser.phone}
-          listingId={manualBoostModalConfig.listingId}
-          onClose={() => setManualBoostModalConfig(prev => ({ ...prev, isOpen: false }))}
-          onSubmitOrder={handleSubmitManualBoostOrder}
           darkMode={darkMode}
         />
       )}
@@ -1637,9 +1608,11 @@ export default function App() {
           itemTitle={momoModalConfig.itemTitle}
           listingId={momoModalConfig.listingId}
           sellerName={momoModalConfig.sellerName}
-          sellerMtnLine={momoModalConfig.sellerMtnLine}
-          sellerAirtelLine={momoModalConfig.sellerAirtelLine}
-          onClose={() => setMomoModalConfig(prev => ({ ...prev, isOpen: false }))}
+
+          onClose={() => {
+            setMomoModalConfig(prev => ({ ...prev, isOpen: false }));
+            setSelectedBoostListing(null);
+          }}
           onSuccess={handlePaymentSuccess}
           darkMode={darkMode}
         />
@@ -1657,8 +1630,8 @@ export default function App() {
             setViewProfileUser(newUser);
             triggerPushNotification({
               id: 'notif_welcome_' + Date.now(),
-              title: `Welcome, ${newUser.name}! 🇺🇬`,
-              body: 'Your account is active with 18 free listings ready to post.',
+              title: `Demo profile created for ${newUser.name}`,
+              body: 'Your sample profile is saved in this browser with an allowance of 18 demo listings. No login or identity checks were performed.',
               type: 'system',
               timestamp: new Date().toISOString(),
               read: false,

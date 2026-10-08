@@ -1,0 +1,6 @@
+{
+  "name": "ShopLocal Ug - Uganda Classifieds & Marketplace",
+  "description": "Buy and sell locally across Uganda with ShopLocal Ug. Enjoy category filtering, location-based search, real-time chat, verified seller profiles, biometric sign-up, MTN MoMo & Airtel Money payments, and 18 free listings for small businesses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

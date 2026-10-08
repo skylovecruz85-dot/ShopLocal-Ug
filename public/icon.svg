@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background rounded gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00C853" />
+      <stop offset="100%" stop-color="#008A2E" />
+    </linearGradient>
+    
+    <!-- Metallic Shield / Bag Highlights -->
+    <linearGradient id="bag-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F0FFF4" />
+    </linearGradient>
+
+    <linearGradient id="ug-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF9E00" />
+      <stop offset="100%" stop-color="#FF6200" />
+    </linearGradient>
+
+    <filter id="app-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+
+    <filter id="inner-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#004D1A" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Base Icon Squircle (iOS / Android Modern Adaptive Shape) -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg-grad)" filter="url(#app-shadow)" />
+
+  <!-- Subtle Top Gloss Arc -->
+  <path d="M 40 128 C 40 56, 96 40, 160 36 C 240 32, 380 36, 472 128 C 472 200, 360 160, 240 160 C 120 160, 40 180, 40 128 Z" fill="#FFFFFF" opacity="0.12" />
+
+  <!-- Shopping Bag / Marketplace Architecture Body -->
+  <g filter="url(#inner-glow)">
+    <!-- Bag Handle -->
+    <path d="M 186 200 C 186 130, 326 130, 326 200" fill="none" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" />
+    
+    <!-- Bag Main Body -->
+    <rect x="120" y="184" width="272" height="236" rx="42" fill="url(#bag-grad)" />
+
+    <!-- Center Crest: Uganda Verified Badge Star & Check -->
+    <!-- Gold / Orange Ribbon -->
+    <circle cx="256" cy="302" r="64" fill="url(#ug-orange)" />
+    
+    <!-- Verified Checkmark in Gold Circle -->
+    <path d="M 230 302 L 248 322 L 284 282" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- UG Flag Indicator Pill in Bottom Right -->
+  <g transform="translate(320, 345)">
+    <!-- Pill Background -->
+    <rect x="0" y="0" width="105" height="48" rx="24" fill="#000000" stroke="#FFCC00" stroke-width="4" />
+    
+    <!-- UG Stripes: Black, Yellow, Red mini dot -->
+    <circle cx="26" cy="24" r="9" fill="#FFCC00" />
+    <circle cx="26" cy="24" r="5" fill="#E60000" />
+
+    <!-- UG Letters -->
+    <text x="50" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="900" fill="#FFFFFF" letter-spacing="1">UG</text>
+  </g>
+</svg>

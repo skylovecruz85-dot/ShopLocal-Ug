@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut, type User as FirebaseUser } from 'firebase/auth';
+import { firebaseAuth, firebaseProfileStorageKey } from './config/firebase';
 import { 
   Filter, 
   MapPin, 
@@ -109,39 +111,9 @@ export default function App() {
     return INITIAL_LISTINGS;
   });
 
-  const [currentUser, setCurrentUser] = useState<User>(() => {
-    const saved = localStorage.getItem('shoplocal_current_user');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as User;
-        const hasLegacySeedDetails =
-          parsed.id === INITIAL_CURRENT_USER.id &&
-          (parsed.isVerified ||
-            Boolean(parsed.ninNumber) ||
-            Boolean(parsed.mtnMomoNumber) ||
-            Boolean(parsed.airtelMoneyNumber));
-        const merged = hasLegacySeedDetails
-          ? { ...INITIAL_CURRENT_USER, freeListingsUsed: parsed.freeListingsUsed ?? INITIAL_CURRENT_USER.freeListingsUsed }
-          : { ...INITIAL_CURRENT_USER, ...parsed };
-
-        return {
-          ...merged,
-          isVerified: false,
-          verificationStatus: 'UNVERIFIED',
-          ninNumber: undefined,
-          isPhoneVerified: false,
-          mtnMomoNumber: '',
-          mtnMomoName: '',
-          airtelMoneyNumber: '',
-          airtelMoneyName: '',
-          momoPayMerchantCode: '',
-          directPayoutsEnabled: false,
-          badges: (merged.badges ?? []).filter((badge) => !/verified|nin/i.test(badge)),
-        };
-      } catch (e) {}
-    }
-    return INITIAL_CURRENT_USER;
-  });
+  const [currentUser, setCurrentUser] = useState<User>(INITIAL_CURRENT_USER);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [firebaseAuthReady, setFirebaseAuthReady] = useState(!firebaseAuth);
 
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const saved = localStorage.getItem('shoplocal_conversations');
@@ -249,14 +221,57 @@ export default function App() {
     purpose: 'BOOST_LISTING',
   });
 
+  useEffect(() => {
+    if (!firebaseAuth) {
+      setFirebaseAuthReady(true);
+      return;
+    }
+
+    return onAuthStateChanged(firebaseAuth, (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        let savedProfile: User | null = null;
+        try {
+          const saved = localStorage.getItem(firebaseProfileStorageKey(user.uid));
+          if (saved) {
+            const parsed = JSON.parse(saved) as User;
+            if (parsed.id === user.uid) savedProfile = parsed;
+          }
+        } catch {}
+
+        if (savedProfile) {
+          setCurrentUser({
+            ...savedProfile,
+            id: user.uid,
+            phone: user.phoneNumber ?? savedProfile.phone,
+            email: user.email ?? savedProfile.email,
+            isPhoneVerified: Boolean(user.phoneNumber),
+            isVerified: false,
+            verificationStatus: 'UNVERIFIED',
+            ninNumber: undefined,
+            badges: Array.from(new Set([
+              ...(savedProfile.badges ?? []).filter((badge) => !/nin|identity verified|phone verified/i.test(badge)),
+              ...(user.phoneNumber ? ['Phone verified'] : []),
+            ])),
+          });
+          setIsSignUpModalOpen(false);
+        } else {
+          setIsSignUpModalOpen(true);
+        }
+      }
+      setFirebaseAuthReady(true);
+    });
+  }, []);
+
   // Local storage synchronization
   useEffect(() => {
     localStorage.setItem('shoplocal_listings', JSON.stringify(listings));
   }, [listings]);
 
   useEffect(() => {
-    localStorage.setItem('shoplocal_current_user', JSON.stringify(currentUser));
-  }, [currentUser]);
+    if (!firebaseAuthReady || !firebaseUser || currentUser.id !== firebaseUser.uid) return;
+    localStorage.setItem(firebaseProfileStorageKey(firebaseUser.uid), JSON.stringify(currentUser));
+  }, [currentUser, firebaseAuthReady, firebaseUser]);
 
   useEffect(() => {
     localStorage.setItem('shoplocal_conversations', JSON.stringify(conversations));
@@ -955,11 +970,7 @@ export default function App() {
 
   // Update profile picture
   const handleUpdateAvatar = (newAvatar: string) => {
-    setCurrentUser(prev => {
-      const updated = { ...prev, avatar: newAvatar };
-      localStorage.setItem('shoplocal_current_user', JSON.stringify(updated));
-      return updated;
-    });
+    setCurrentUser(prev => ({ ...prev, avatar: newAvatar }));
     setViewProfileUser(prev => prev ? { ...prev, avatar: newAvatar } : null);
   };
 
@@ -980,14 +991,27 @@ export default function App() {
     localStorage.removeItem('shoplocal_recently_viewed');
   };
 
-  // Sign out from settings anytime
-  const handleSignOut = () => {
-    localStorage.removeItem('shoplocal_current_user');
+  // Sign out from Firebase and return to the local demo account.
+  const handleSignOut = async () => {
+    try {
+      if (firebaseAuth) await signOut(firebaseAuth);
+    } catch {
+      triggerPushNotification({
+        id: 'notif_signout_error_' + Date.now(),
+        title: 'Could not sign out',
+        body: 'Firebase could not end this session. Please try again.',
+        type: 'system',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      return;
+    }
+
     const guestUser: User = {
       id: 'guest_' + Date.now(),
       name: 'Guest User',
-      phone: '+256 700 000 000',
-      email: 'guest@shoplocal.ug',
+      phone: '',
+      email: '',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
       district: 'Kampala',
       rating: 0,
@@ -1009,8 +1033,8 @@ export default function App() {
     setViewProfileUser(null);
     triggerPushNotification({
       id: 'notif_signout_' + Date.now(),
-      title: 'Signed Out Successfully 👋',
-      body: 'You have signed out. You can sign back in or create a new account anytime.',
+      title: 'Signed out',
+      body: 'Your Firebase session has ended. You can sign in again anytime.',
       type: 'system',
       timestamp: new Date().toISOString(),
       read: false,
@@ -1072,6 +1096,7 @@ export default function App() {
       {/* Top Header */}
       <Header
         currentUser={currentUser}
+        isFirebaseAuthenticated={Boolean(firebaseUser && currentUser.id === firebaseUser.uid)}
         selectedDistrict={selectedDistrict}
         onSelectDistrict={setSelectedDistrict}
         searchQuery={searchQuery}
@@ -1639,17 +1664,31 @@ export default function App() {
       {/* MODAL 6: One-Time Sign-Up */}
       {isSignUpModalOpen && (
         <SignUpModal
-          onClose={() => setIsSignUpModalOpen(false)}
-          onSignUpComplete={(newUser) => {
-            setCurrentUser(newUser);
-            localStorage.setItem('shoplocal_current_user', JSON.stringify(newUser));
+          onClose={() => {
+            const signedInUser = firebaseAuth?.currentUser;
+            if (signedInUser && signedInUser.uid !== currentUser.id && firebaseAuth) {
+              void signOut(firebaseAuth);
+            }
             setIsSignUpModalOpen(false);
-            // Let account appear directly in profile without sign-in details
-            setViewProfileUser(newUser);
+          }}
+          onSignUpComplete={(newUser) => {
+            const signedInUser = firebaseAuth?.currentUser ?? null;
+            const profile = signedInUser?.uid === newUser.id
+              ? {
+                  ...newUser,
+                  phone: signedInUser.phoneNumber ?? newUser.phone,
+                  isPhoneVerified: Boolean(signedInUser.phoneNumber),
+                }
+              : newUser;
+            localStorage.setItem(firebaseProfileStorageKey(profile.id), JSON.stringify(profile));
+            if (signedInUser?.uid === profile.id) setFirebaseUser(signedInUser);
+            setCurrentUser(profile);
+            setIsSignUpModalOpen(false);
+            setViewProfileUser(profile);
             triggerPushNotification({
               id: 'notif_welcome_' + Date.now(),
-              title: `Demo profile created for ${newUser.name}`,
-              body: 'Your sample profile is saved in this browser with an allowance of 18 demo listings. No login or identity checks were performed.',
+              title: 'Welcome to ShopLocal UG',
+              body: 'Your phone number was verified with Firebase. Your marketplace profile is saved in this browser.',
               type: 'system',
               timestamp: new Date().toISOString(),
               read: false,

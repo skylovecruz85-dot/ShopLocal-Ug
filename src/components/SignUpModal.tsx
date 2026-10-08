@@ -1,5 +1,7 @@
-import React, { useRef, useState } from 'react';
-import { AlertCircle, Camera, CheckCircle2, Info, Mail, MapPin, Smartphone, Upload, User as UserIcon, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { AlertCircle, ArrowLeft, Camera, CheckCircle2, Info, Loader2, Mail, MapPin, Smartphone, Upload, User as UserIcon, X } from 'lucide-react';
+import { browserLocalPersistence, RecaptchaVerifier, setPersistence, signInWithPhoneNumber, type ConfirmationResult, type User as FirebaseUser } from 'firebase/auth';
+import { firebaseAuth, firebaseConfigured, firebaseProfileStorageKey } from '../config/firebase';
 import { User, UgandaDistrict } from '../types';
 import { UGANDA_DISTRICTS } from '../data/mockData';
 
@@ -9,24 +11,79 @@ interface SignUpModalProps {
   darkMode?: boolean;
 }
 
-const isValidUgandanMobile = (value: string) => {
+type SignInStep = 'phone' | 'code' | 'profile';
+
+const formatUgandanPhoneNumber = (value: string) => {
   const digits = value.replace(/\D/g, '');
   const nationalNumber = digits.startsWith('256')
     ? digits.slice(3)
     : digits.startsWith('0')
       ? digits.slice(1)
       : digits;
-  return /^7\d{8}$/.test(nationalNumber);
+  return /^7\d{8}$/.test(nationalNumber) ? `+256${nationalNumber}` : null;
+};
+
+const readLocalProfile = (uid: string): User | null => {
+  try {
+    const saved = localStorage.getItem(firebaseProfileStorageKey(uid));
+    if (!saved) return null;
+    const profile = JSON.parse(saved) as User;
+    return profile.id === uid ? profile : null;
+  } catch {
+    return null;
+  }
+};
+
+const getFirebaseErrorMessage = (error: unknown) => {
+  const code = (error as { code?: string } | null)?.code;
+  switch (code) {
+    case 'auth/invalid-phone-number':
+      return 'That phone number is not valid. Enter a Ugandan mobile number such as +256 772 000 000.';
+    case 'auth/too-many-requests':
+      return 'Firebase has temporarily limited verification attempts. Please wait before trying again.';
+    case 'auth/quota-exceeded':
+    case 'auth/billing-not-enabled':
+      return 'Firebase is not currently allowing SMS delivery for this project. Check its Authentication and billing limits.';
+    case 'auth/unauthorized-domain':
+      return 'This domain is not authorized in Firebase Authentication. Add the current app domain under Authentication settings.';
+    case 'auth/operation-not-allowed':
+      return 'Phone sign-in is not enabled for this Firebase project. Enable the Phone provider in Firebase Authentication.';
+    case 'auth/captcha-check-failed':
+    case 'auth/missing-app-credential':
+    case 'auth/invalid-app-credential':
+      return 'Firebase could not verify this browser. Check the authorized domain and reCAPTCHA settings, then try again.';
+    case 'auth/network-request-failed':
+      return 'A network error interrupted Firebase sign-in. Check your connection and try again.';
+    case 'auth/invalid-verification-code':
+      return 'That code is not correct. Check the SMS and enter the six-digit code again.';
+    case 'auth/code-expired':
+    case 'auth/session-expired':
+      return 'That verification code has expired. Send a new code to continue.';
+    default:
+      return 'Firebase could not complete phone sign-in. Check the project setup and try again.';
+  }
 };
 
 export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpComplete, darkMode = false }) => {
+  const initialFirebaseUser = firebaseAuth?.currentUser ?? null;
+  const [step, setStep] = useState<SignInStep>(initialFirebaseUser?.phoneNumber ? 'profile' : 'phone');
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(initialFirebaseUser?.phoneNumber ?? '');
+  const [phoneForVerification, setPhoneForVerification] = useState(initialFirebaseUser?.phoneNumber ?? '');
   const [email, setEmail] = useState('');
   const [district, setDistrict] = useState<UgandaDistrict>('Kampala');
   const [avatar, setAvatar] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [verifiedFirebaseUser, setVerifiedFirebaseUser] = useState<FirebaseUser | null>(initialFirebaseUser);
   const [formError, setFormError] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    recaptchaVerifierRef.current?.clear();
+  }, []);
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -51,21 +108,107 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
     reader.readAsDataURL(file);
   };
 
-  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSendCode = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFormError('');
+    const e164Phone = formatUgandanPhoneNumber(phone);
+    if (!e164Phone) {
+      setFormError('Enter a valid Ugandan mobile number, such as +256 772 000 000.');
+      return;
+    }
+    if (!firebaseConfigured || !firebaseAuth) {
+      setFormError('Firebase sign-in is not configured. Check the Firebase web app settings in the project environment.');
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      await setPersistence(firebaseAuth, browserLocalPersistence);
+      const verifier = recaptchaVerifierRef.current ?? new RecaptchaVerifier(firebaseAuth, 'shoplocal-send-verification-code', { size: 'invisible' });
+      recaptchaVerifierRef.current = verifier;
+      const result = await signInWithPhoneNumber(firebaseAuth, e164Phone, verifier);
+      setConfirmationResult(result);
+      setPhoneForVerification(e164Phone);
+      setStep('code');
+      setVerificationCode('');
+    } catch (error) {
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = null;
+      setFormError(getFirebaseErrorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleVerifyCode = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError('');
+    const code = verificationCode.replace(/\D/g, '');
+    if (!/^\d{6}$/.test(code)) {
+      setFormError('Enter the six-digit verification code from Firebase.');
+      return;
+    }
+    if (!confirmationResult) {
+      setFormError('Request a new verification code to continue.');
+      setStep('phone');
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      const credential = await confirmationResult.confirm(code);
+      const firebaseUser = credential.user;
+      const verifiedPhone = firebaseUser.phoneNumber ?? phoneForVerification;
+      const savedProfile = readLocalProfile(firebaseUser.uid);
+
+      if (savedProfile) {
+        const restoredProfile: User = {
+          ...savedProfile,
+          id: firebaseUser.uid,
+          phone: verifiedPhone,
+          email: firebaseUser.email ?? savedProfile.email,
+          isPhoneVerified: true,
+          isVerified: false,
+          verificationStatus: 'UNVERIFIED',
+          ninNumber: undefined,
+          badges: Array.from(new Set([
+            ...(savedProfile.badges ?? []).filter((badge) => !/nin|identity verified|phone verified/i.test(badge)),
+            'Phone verified',
+          ])),
+        };
+        onSignUpComplete(restoredProfile);
+        return;
+      }
+
+      setVerifiedFirebaseUser(firebaseUser);
+      setPhoneForVerification(verifiedPhone);
+      setStep('profile');
+    } catch (error) {
+      setFormError(getFirebaseErrorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleCompleteProfile = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError('');
     if (fullName.trim().length < 2) {
       setFormError('Enter a name with at least 2 characters.');
       return;
     }
-    if (!isValidUgandanMobile(phone)) {
-      setFormError('Enter a valid Ugandan mobile number, such as +256 772 000 000.');
+
+    const firebaseUser = verifiedFirebaseUser ?? firebaseAuth?.currentUser ?? null;
+    if (!firebaseUser?.phoneNumber) {
+      setFormError('Verify your phone number before completing your profile.');
+      setStep('phone');
       return;
     }
 
     const newUser: User = {
-      id: `usr_demo_${Date.now()}`,
+      id: firebaseUser.uid,
       name: fullName.trim(),
-      phone: phone.trim(),
+      phone: firebaseUser.phoneNumber,
       email: email.trim(),
       avatar,
       district,
@@ -73,14 +216,14 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
       reviewCount: 0,
       isVerified: false,
       verificationStatus: 'UNVERIFIED',
-      isPhoneVerified: false,
+      isPhoneVerified: true,
       isProMember: false,
       freeListingsUsed: 0,
       freeListingsTotal: 18,
       hasBiometrics: false,
       joinedDate: new Date().toISOString(),
-      responseTime: 'Demo replies are simulated',
-      badges: ['Demo profile'],
+      responseTime: 'New to ShopLocal',
+      badges: ['Phone verified'],
       activePlan: 'FREE_18',
       completedSales: [],
     };
@@ -88,12 +231,27 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
     onSignUpComplete(newUser);
   };
 
+  const handleChangeNumber = () => {
+    recaptchaVerifierRef.current?.clear();
+    recaptchaVerifierRef.current = null;
+    setConfirmationResult(null);
+    setVerificationCode('');
+    setFormError('');
+    setStep('phone');
+  };
+
   const inputClass = `w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 ${darkMode ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400'}`;
+  const stepTitle = step === 'phone' ? 'Sign in or create an account' : step === 'code' ? 'Check your messages' : 'Complete your profile';
+  const stepDescription = step === 'phone'
+    ? 'Use your Ugandan mobile number to continue securely.'
+    : step === 'code'
+      ? `Enter the six-digit code sent to ${phoneForVerification}.`
+      : 'Your phone is verified. Add the details buyers will see.';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/65 p-3 backdrop-blur-sm">
       <section
-        aria-labelledby="demo-signup-title"
+        aria-labelledby="firebase-signin-title"
         aria-modal="true"
         className={`my-auto w-full max-w-md overflow-hidden rounded-3xl border shadow-2xl ${darkMode ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`}
         onClick={(event) => event.stopPropagation()}
@@ -101,75 +259,124 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
       >
         <header className={`flex items-center justify-between border-b p-5 ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
           <div>
-            <h2 className="font-display text-lg font-black" id="demo-signup-title">Create a demo profile</h2>
-            <p className={`mt-0.5 text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Explore ShopLocal UG with a local sample account.</p>
+            <h2 className="font-display text-lg font-black" id="firebase-signin-title">{stepTitle}</h2>
+            <p className={`mt-0.5 text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{stepDescription}</p>
           </div>
-          <button aria-label="Close signup" className={`rounded-xl p-2 ${darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-400 hover:bg-slate-100'}`} onClick={onClose} type="button">
+          <button aria-label="Close sign in" className={`rounded-xl p-2 ${darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-400 hover:bg-slate-100'}`} onClick={onClose} type="button">
             <X className="size-5" />
           </button>
         </header>
 
-        <form className="max-h-[78vh] space-y-4 overflow-y-auto p-5" onSubmit={handleFormSubmit}>
-          <div className={`flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed ${darkMode ? 'border-amber-900 bg-amber-950/40 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-950'}`} role="note">
+        <form
+          className="max-h-[78vh] space-y-4 overflow-y-auto p-5"
+          onSubmit={step === 'phone' ? handleSendCode : step === 'code' ? handleVerifyCode : handleCompleteProfile}
+        >
+          <div className={`flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed ${darkMode ? 'border-emerald-900 bg-emerald-950/35 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`} role="note">
             <Info className="mt-0.5 size-4 shrink-0" />
-            <p><strong>Demo only.</strong> Your profile is saved in this browser. No password, email/SMS delivery, phone check, or identity verification is performed.</p>
+            <p><strong>Firebase phone sign-in.</strong> Firebase verifies your number by SMS. Your marketplace profile and demo data stay in this browser; carrier messaging rates may apply.</p>
           </div>
 
-          <div className="flex flex-col items-center">
-            <button aria-label="Choose profile photo" className="group relative rounded-full" onClick={() => fileInputRef.current?.click()} type="button">
-              <img alt="Profile preview" className="size-20 rounded-full object-cover ring-4 ring-emerald-500/20" src={avatar} />
-              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                <Camera className="size-5" />
-              </span>
-            </button>
-            <input accept="image/*" className="hidden" onChange={handleAvatarUpload} ref={fileInputRef} type="file" />
-            <button className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400" onClick={() => fileInputRef.current?.click()} type="button">
-              <Upload className="size-3.5" /> Upload profile photo
-            </button>
-          </div>
+          {!firebaseConfigured && (
+            <p className={`rounded-xl border p-3 text-xs ${darkMode ? 'border-amber-900 bg-amber-950/40 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-950'}`} role="status">
+              Firebase web configuration is missing. Add the Firebase web app settings to the project environment before signing in.
+            </p>
+          )}
 
-          <div>
-            <label className="mb-1 block text-xs font-bold" htmlFor="demo-full-name">Full or business name</label>
-            <div className="relative">
-              <UserIcon className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input autoComplete="name" className={inputClass} id="demo-full-name" maxLength={80} minLength={2} onChange={(event) => setFullName(event.target.value)} placeholder="e.g. Sarah Nalubega" required value={fullName} />
+          {step === 'phone' && (
+            <div>
+              <label className="mb-1 block text-xs font-bold" htmlFor="firebase-phone">Ugandan mobile number</label>
+              <div className="relative">
+                <Smartphone className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input autoComplete="tel" className={inputClass} id="firebase-phone" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
+              </div>
+              <p className={`mt-1.5 text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>We will send one verification code. No password is needed.</p>
             </div>
-          </div>
+          )}
 
-          <div>
-            <label className="mb-1 block text-xs font-bold" htmlFor="demo-phone">Ugandan mobile number</label>
-            <div className="relative">
-              <Smartphone className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input autoComplete="tel" className={inputClass} id="demo-phone" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
-            </div>
-          </div>
+          {step === 'code' && (
+            <>
+              <div className={`rounded-xl border px-3 py-2.5 text-xs ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                Code sent to <strong className={darkMode ? 'text-white' : 'text-slate-900'}>{phoneForVerification}</strong>. Check your SMS messages.
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold" htmlFor="firebase-verification-code">Six-digit verification code</label>
+                <input
+                  autoComplete="one-time-code"
+                  autoFocus
+                  className={`w-full rounded-xl border px-4 py-3 text-center text-xl font-black tracking-[0.35em] outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 ${darkMode ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400'}`}
+                  id="firebase-verification-code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  pattern="[0-9]{6}"
+                  placeholder="000000"
+                  required
+                  value={verificationCode}
+                />
+              </div>
+              <button className={`inline-flex items-center gap-1.5 text-xs font-bold ${darkMode ? 'text-emerald-300 hover:text-emerald-200' : 'text-emerald-700 hover:text-emerald-800'}`} onClick={handleChangeNumber} type="button">
+                <ArrowLeft className="size-3.5" /> Change phone number
+              </button>
+            </>
+          )}
 
-          <div>
-            <label className="mb-1 block text-xs font-bold" htmlFor="demo-email">Email address</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input autoComplete="email" className={inputClass} id="demo-email" onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required type="email" value={email} />
-            </div>
-          </div>
+          {step === 'profile' && (
+            <>
+              <div className="flex flex-col items-center">
+                <button aria-label="Choose profile photo" className="group relative rounded-full" onClick={() => fileInputRef.current?.click()} type="button">
+                  <img alt="Profile preview" className="size-20 rounded-full object-cover ring-4 ring-emerald-500/20" src={avatar} />
+                  <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                    <Camera className="size-5" />
+                  </span>
+                </button>
+                <input accept="image/*" className="hidden" onChange={handleAvatarUpload} ref={fileInputRef} type="file" />
+                <button className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400" onClick={() => fileInputRef.current?.click()} type="button">
+                  <Upload className="size-3.5" /> Upload profile photo
+                </button>
+              </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-bold" htmlFor="demo-district">Trading district</label>
-            <div className="relative">
-              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-emerald-600" />
-              <select className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 ${darkMode ? 'border-slate-700 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-900'}`} id="demo-district" onChange={(event) => setDistrict(event.target.value as UgandaDistrict)} value={district}>
-                {UGANDA_DISTRICTS.filter((value) => value !== 'All Uganda').map((value) => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </div>
-          </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold" htmlFor="firebase-full-name">Full or business name</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input autoComplete="name" className={inputClass} id="firebase-full-name" maxLength={80} minLength={2} onChange={(event) => setFullName(event.target.value)} placeholder="e.g. Sarah Nalubega" required value={fullName} />
+                </div>
+              </div>
 
-          <div className={`rounded-xl border px-3 py-2.5 text-xs ${darkMode ? 'border-emerald-900 bg-emerald-950/35 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>
-            The sample profile includes an allowance of 18 demo listings. Changes stay in this browser.
-          </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold" htmlFor="firebase-email">Email address <span className={`font-normal ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>(optional)</span></label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input autoComplete="email" className={inputClass} id="firebase-email" onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" type="email" value={email} />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold" htmlFor="firebase-district">Trading district</label>
+                <div className="relative">
+                  <MapPin className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-emerald-600" />
+                  <select className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 ${darkMode ? 'border-slate-700 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-900'}`} id="firebase-district" onChange={(event) => setDistrict(event.target.value as UgandaDistrict)} value={district}>
+                    {UGANDA_DISTRICTS.filter((value) => value !== 'All Uganda').map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className={`rounded-xl border px-3 py-2.5 text-xs ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                The verified phone is linked to Firebase Authentication. Profile details are stored locally in this demo.
+              </div>
+            </>
+          )}
 
           {formError && <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300" role="alert"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</p>}
 
-          <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-emerald-700" type="submit">
-            <CheckCircle2 className="size-4" /> Create demo profile
+          <button
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy || (step === 'phone' && !firebaseConfigured)}
+            id={step === 'phone' ? 'shoplocal-send-verification-code' : undefined}
+            type="submit"
+          >
+            {isBusy ? <Loader2 className="size-4 animate-spin" /> : step === 'phone' ? <Smartphone className="size-4" /> : <CheckCircle2 className="size-4" />}
+            {isBusy ? step === 'phone' ? 'Sending code…' : step === 'code' ? 'Verifying code…' : 'Finishing profile…' : step === 'phone' ? 'Send verification code' : step === 'code' ? 'Verify and sign in' : 'Complete profile'}
           </button>
         </form>
       </section>

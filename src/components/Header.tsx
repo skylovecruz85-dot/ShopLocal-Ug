@@ -22,6 +22,7 @@ import { isOwnerUser } from '../config/paymentConfig';
 
 interface HeaderProps {
   currentUser: User;
+  isFirebaseAuthenticated: boolean;
   selectedDistrict: string;
   onSelectDistrict: (district: string) => void;
   searchQuery: string;
@@ -60,6 +61,7 @@ const TRENDING_TAGS = [
 
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
+  isFirebaseAuthenticated,
   selectedDistrict,
   onSelectDistrict,
   searchQuery,
@@ -207,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
               {mobileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-72 rounded-2xl shadow-xl border border-slate-200 bg-white text-slate-800 py-2 z-50">
                   <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-[11px] text-slate-500 font-medium">Active demo profile</p>
+                    <p className="text-[11px] text-slate-500 font-medium">{isFirebaseAuthenticated ? 'Firebase phone account' : 'Local demo account'}</p>
                     <p className="text-xs font-bold truncate text-[#222222]">{currentUser.name}</p>
                     <p className="text-[11px] text-slate-500">{currentUser.phone}</p>
                   </div>
@@ -226,13 +228,15 @@ export const Header: React.FC<HeaderProps> = ({
                       </span>
                     </button>
 
-                    <button
-                      onClick={() => { onOpenSignUp(); setMobileMenuOpen(false); }}
-                      className="w-full px-4 py-2 text-left text-xs font-semibold flex items-center gap-2 cursor-pointer hover:bg-slate-50"
-                    >
-                      <UserPlus className="w-4 h-4 text-[#00B53F]" />
-                      <span>Create another demo profile</span>
-                    </button>
+                    {!isFirebaseAuthenticated && (
+                      <button
+                        onClick={() => { onOpenSignUp(); setMobileMenuOpen(false); }}
+                        className="w-full px-4 py-2 text-left text-xs font-semibold flex items-center gap-2 cursor-pointer hover:bg-slate-50"
+                      >
+                        <UserPlus className="w-4 h-4 text-[#00B53F]" />
+                        <span>Sign in or create account</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => { onOpenProfile(currentUser); setMobileMenuOpen(false); }}

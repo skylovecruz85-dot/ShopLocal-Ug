@@ -373,7 +373,7 @@ export default function App() {
       try {
         new Notification(newNotif.title, {
           body: newNotif.body,
-          icon: '/favicon.ico',
+              icon: '/icon.svg',
         });
       } catch (e) {
         // Fallback silently if unsupported in frame
@@ -1475,9 +1475,14 @@ export default function App() {
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#00B53F] flex items-center justify-center text-white font-bold text-sm">
-              <ShoppingBag className="w-4 h-4 text-white stroke-[2.5]" />
-            </div>
+            <img
+              src="/icon.svg"
+              alt=""
+              aria-hidden="true"
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-lg"
+            />
             <div className="flex items-baseline gap-1">
               <span className="font-display font-black text-xl tracking-tight text-[#00B53F]">
                 ShopLocal

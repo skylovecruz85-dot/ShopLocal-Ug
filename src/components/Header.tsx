@@ -8,7 +8,6 @@ import {
   Crown, 
   User as UserIcon, 
   Bell, 
-  ShoppingBag, 
   Moon, 
   Sun, 
   ChevronDown, 
@@ -95,9 +94,14 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={(e) => { e.preventDefault(); onSearchChange(''); onSelectDistrict('All Uganda'); }}
               className="flex items-center gap-2 group cursor-pointer"
             >
-              <div className="w-9 h-9 rounded-xl bg-[#00B53F] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
-                <ShoppingBag className="w-5 h-5 text-white stroke-[2.5]" />
-              </div>
+              <img
+                src="/icon.svg"
+                alt=""
+                aria-hidden="true"
+                width={36}
+                height={36}
+                className="w-9 h-9 rounded-xl shadow-xs group-hover:scale-105 transition-transform"
+              />
               <div className="flex flex-col">
                 <div className="flex items-baseline gap-1">
                   <span className="font-display font-black text-xl sm:text-2xl tracking-tight text-[#00B53F]">

@@ -1,8 +1,20 @@
-<!-- App Favicon redirect -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="#00B53F"/>
-  <path d="M 23 26 C 23 17, 41 17, 41 26" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"/>
-  <rect x="15" y="24" width="34" height="30" rx="6" fill="#FFFFFF"/>
-  <circle cx="32" cy="39" r="8" fill="#FF7E00"/>
-  <path d="M 29 39 L 31 41 L 35 37" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ShopLocal UG">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0D7549" />
+      <stop offset="1" stop-color="#075D3C" />
+    </linearGradient>
+    <linearGradient id="bag" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFDF6" />
+      <stop offset="1" stop-color="#F3E9CE" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#background)" />
+  <path d="M192 202v-34a64 64 0 0 1 128 0v34" fill="none" stroke="#FFF9E9" stroke-linecap="round" stroke-width="23" />
+  <path d="M146 190h220c10 0 18 8 17 18l-20 190c-1 11-10 18-20 18H169c-10 0-19-7-20-18l-20-190c-1-10 7-18 17-18Z" fill="url(#bag)" />
+  <path d="M256 239c-29 0-52 23-52 52 0 39 52 91 52 91s52-52 52-91c0-29-23-52-52-52Z" fill="#0D7549" />
+  <circle cx="256" cy="291" r="15" fill="#FFF9E9" />
+  <path d="M220 377h72v7h-72z" fill="#171717" />
+  <path d="M220 384h72v7h-72z" fill="#F3C52B" />
+  <path d="M220 391h72v7h-72z" fill="#D72638" />
 </svg>

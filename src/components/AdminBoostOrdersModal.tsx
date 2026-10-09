@@ -22,6 +22,7 @@ interface AdminBoostOrdersModalProps {
   onClose: () => void;
   onApproveOrder: (orderId: string) => void;
   onDeclineOrder: (orderId: string) => void;
+  onViewProof?: (orderId: string) => Promise<string>;
   darkMode?: boolean;
 }
 
@@ -31,11 +32,13 @@ export const AdminBoostOrdersModal: React.FC<AdminBoostOrdersModalProps> = ({
   onClose,
   onApproveOrder,
   onDeclineOrder,
+  onViewProof,
   darkMode,
 }) => {
   const [filter, setFilter] = useState<'ALL' | 'Pending' | 'Approved' | 'Declined'>('Pending');
   const [search, setSearch] = useState('');
   const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
+  const [loadingProofId, setLoadingProofId] = useState<string | null>(null);
 
   const filteredOrders = orders.filter(o => {
     const matchesFilter = filter === 'ALL' || o.status === filter;
@@ -76,7 +79,7 @@ export const AdminBoostOrdersModal: React.FC<AdminBoostOrdersModalProps> = ({
                 )}
               </div>
               <p className="text-[11px] text-zinc-400 mt-0.5">
-                Review sample boost requests. Approval changes this preview only.
+                Review private payment submissions and activate approved boosts.
               </p>
             </div>
           </div>
@@ -91,7 +94,7 @@ export const AdminBoostOrdersModal: React.FC<AdminBoostOrdersModalProps> = ({
         </div>
 
         <div role="note" className="px-5 py-3 bg-amber-950/30 border-b border-amber-500/20 text-xs text-amber-100">
-          Demo orders only. Payment verification, carrier alerts, and fund transfers are not connected.
+          Private admin workspace. Review the SMS proof and confirm the transaction before activating a boost.
         </div>
 
         {/* Filter Pills + Search */}
@@ -222,7 +225,7 @@ export const AdminBoostOrdersModal: React.FC<AdminBoostOrdersModalProps> = ({
                       </div>
                       <div>
                         <span className="text-zinc-500">Time:</span>{' '}
-                        <span>{new Date(order.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(order.time).toLocaleDateString()}</span>
+                        <span>{order.time ? `${new Date(order.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${new Date(order.time).toLocaleDateString()}` : 'Not available'}</span>
                       </div>
                       <div>
                         <span className="text-zinc-500">Ad Status:</span>{' '}
@@ -235,11 +238,19 @@ export const AdminBoostOrdersModal: React.FC<AdminBoostOrdersModalProps> = ({
 
                   {/* Right Column: Screenshot & Action Buttons */}
                   <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center w-full md:w-auto justify-end pt-2 md:pt-0 border-t md:border-t-0 border-zinc-800">
-                    {order.screenshot && (
+                    {order.hasScreenshot && onViewProof && (
                       <button
                         type="button"
-                        onClick={() => setPreviewScreenshot(order.screenshot!)}
-                        className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        disabled={loadingProofId === order.id}
+                        onClick={async () => {
+                          setLoadingProofId(order.id);
+                          try {
+                            setPreviewScreenshot(await onViewProof(order.id));
+                          } finally {
+                            setLoadingProofId(null);
+                          }
+                        }}
+                        className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-60 text-zinc-200 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                         title="View SMS Screenshot"
                       >
                         <Eye className="w-3.5 h-3.5 text-[#00E676]" />

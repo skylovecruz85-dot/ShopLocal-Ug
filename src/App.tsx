@@ -129,8 +129,8 @@ export default function App() {
     return saved ? JSON.parse(saved) : [
       {
         id: 'notif_welcome',
-        title: 'Welcome to the ShopLocal UG demo',
-        body: 'Browse sample listings, try the account and chat flows, and preview simulated checkout. No live payments or identity checks run.',
+        title: 'Welcome to ShopLocal UG',
+        body: 'Browse local ads, manage your seller workspace, and submit paid boost proofs for private admin review.',
         type: 'system',
         timestamp: new Date().toISOString(),
         read: false,
@@ -1203,13 +1203,13 @@ export default function App() {
               <div className="flex flex-col md:flex-row items-center justify-between gap-3 relative z-10 w-full">
                 <div className="space-y-1.5 text-center md:text-left max-w-xl">
                   <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-white text-[10px] font-bold">
-                    <span>INTERACTIVE MARKETPLACE DEMO</span>
+                    <span>UGANDA&apos;S LOCAL MARKETPLACE</span>
                   </div>
                   <h1 className="font-display font-black text-lg sm:text-2xl text-white tracking-tight leading-snug">
                     Browse & sell locally with <span className="text-amber-200">ShopLocal UG</span>
                   </h1>
                   <p className="text-[11px] sm:text-xs text-emerald-50 leading-relaxed">
-                    Sample listings and replies. Profiles and promotions stay in this browser; checkout is simulated and no money moves.
+                    Post local ads, manage your seller workspace, and request boosts with private payment-proof review.
                   </p>
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
                     <button
@@ -1678,8 +1678,9 @@ export default function App() {
           orders={boostOrders}
           listings={listings}
           onClose={() => setIsAdminBoostOrdersOpen(false)}
-          onApproveOrder={handleApproveBoostOrder}
-          onDeclineOrder={handleDeclineBoostOrder}
+          onApproveOrder={(orderId) => { void handleReviewBoostOrder(orderId, 'approve'); }}
+          onDeclineOrder={(orderId) => { void handleReviewBoostOrder(orderId, 'decline'); }}
+          onViewProof={handleViewBoostProof}
           darkMode={darkMode}
         />
       )}
@@ -1803,11 +1804,12 @@ export default function App() {
             setIsDashboardOpen(false);
             setIsPayoutSettingsOpen(true);
           }}
-          onOpenAdminBoostOrders={() => {
+          onOpenAdminBoostOrders={canReviewBoostOrders ? () => {
             setIsDashboardOpen(false);
             setIsAdminBoostOrdersOpen(true);
-          }}
+          } : undefined}
           pendingBoostOrdersCount={boostOrders.filter(o => o.status === 'Pending').length}
+          onRenewListing={handleRenewListing}
           onToggleSold={handleToggleSold}
           onBoostListing={(id) => {
             const item = listings.find(l => l.id === id);

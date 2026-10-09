@@ -2,7 +2,6 @@ import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import process from 'node:process';
-import { Readable } from 'node:stream';
 import { del, get, put } from '@vercel/blob';
 import { attachDatabasePool } from '@vercel/functions';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
@@ -232,7 +231,8 @@ export function createBoostOrdersHandler(env: RuntimeEnv) {
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
     });
-    Readable.fromWeb(proof.stream).pipe(response);
+    const proofBytes = Buffer.from(await new Response(proof.stream).arrayBuffer());
+    response.end(proofBytes);
   };
 
   const handlePost = async (request: ApiRequest, response: ServerResponse, user: FirebaseIdentity) => {

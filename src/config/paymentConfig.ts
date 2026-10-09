@@ -24,7 +24,7 @@ export const ADMIN_CONFIG = {
 };
 
 export function getCheckoutMessage(network: string, amount: number) {
-  return `Demo checkout preview for UGX ${amount.toLocaleString()} using ${network}. No carrier request was sent and no funds moved.`;
+  return `Send UGX ${amount.toLocaleString()} using ${network} to the ShopLocal receiver shown in the payment form.`;
 }
 
 export function isOwnerUser(user?: { id?: string } | null): boolean {

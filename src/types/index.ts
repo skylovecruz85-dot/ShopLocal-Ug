@@ -75,6 +75,7 @@ export interface VerificationApplication {
 export interface User {
   id: string;
   name: string;
+  username?: string;
   businessName?: string;
   phone: string;
   email: string;

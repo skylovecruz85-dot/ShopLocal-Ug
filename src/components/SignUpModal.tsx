@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Camera, CheckCircle2, Info, Loader2, Mail, MapPin, Smartphone, Upload, User as UserIcon, X } from 'lucide-react';
-import { browserLocalPersistence, RecaptchaVerifier, setPersistence, signInWithPhoneNumber, type ConfirmationResult, type User as FirebaseUser } from 'firebase/auth';
+import { browserLocalPersistence, RecaptchaVerifier, setPersistence, signInWithEmailAndPassword, signInWithPhoneNumber, createUserWithEmailAndPassword, type ConfirmationResult, type User as FirebaseUser } from 'firebase/auth';
 import { firebaseAuth, firebaseConfigured, firebaseProfileStorageKey } from '../config/firebase';
 import { User, UgandaDistrict } from '../types';
 import { UGANDA_DISTRICTS } from '../data/mockData';
@@ -11,7 +11,8 @@ interface SignUpModalProps {
   darkMode?: boolean;
 }
 
-type SignInStep = 'phone' | 'code' | 'profile';
+type SignInStep = 'phone' | 'code' | 'email' | 'profile';
+type AuthMethod = 'email' | 'phone';
 
 const formatUgandanPhoneNumber = (value: string) => {
   const digits = value.replace(/\D/g, '');
@@ -67,7 +68,11 @@ const getFirebaseErrorMessage = (error: unknown) => {
 export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpComplete, darkMode = false }) => {
   const initialFirebaseUser = firebaseAuth?.currentUser ?? null;
   const [step, setStep] = useState<SignInStep>(initialFirebaseUser?.phoneNumber ? 'profile' : 'phone');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
+  const [isCreateAccount, setIsCreateAccount] = useState(true);
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [phone, setPhone] = useState(initialFirebaseUser?.phoneNumber ?? '');
   const [phoneForVerification, setPhoneForVerification] = useState(initialFirebaseUser?.phoneNumber ?? '');
   const [email, setEmail] = useState('');
@@ -106,6 +111,39 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleEmailAuth = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError('');
+    if (!email.trim() || password.length < 6) {
+      setFormError('Enter an email and a password with at least 6 characters.');
+      return;
+    }
+    if (!firebaseAuth) {
+      setFormError('Firebase sign-in is not configured.');
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      await setPersistence(firebaseAuth, browserLocalPersistence);
+      const credential = isCreateAccount
+        ? await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password)
+        : await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      const savedProfile = readLocalProfile(credential.user.uid);
+      if (savedProfile) {
+        onSignUpComplete({ ...savedProfile, id: credential.user.uid, email: credential.user.email ?? email.trim() });
+        return;
+      }
+      setVerifiedFirebaseUser(credential.user);
+      setStep('profile');
+    } catch (error) {
+      const code = (error as { code?: string } | null)?.code;
+      setFormError(code === 'auth/email-already-in-use' ? 'That email already has an account. Switch to Sign in.' : code === 'auth/invalid-credential' ? 'The email or password is incorrect.' : getFirebaseErrorMessage(error));
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const handleSendCode = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -167,7 +205,7 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
           id: firebaseUser.uid,
           phone: verifiedPhone,
           email: firebaseUser.email ?? savedProfile.email,
-          isPhoneVerified: true,
+      isPhoneVerified: Boolean(firebaseUser.phoneNumber),
           isVerified: false,
           verificationStatus: 'UNVERIFIED',
           ninNumber: undefined,
@@ -193,22 +231,27 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
   const handleCompleteProfile = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError('');
-    if (fullName.trim().length < 2) {
-      setFormError('Enter a name with at least 2 characters.');
+    if (fullName.trim().length < 2 || username.trim().length < 3) {
+      setFormError('Enter your name and a username with at least 3 characters.');
       return;
     }
 
     const firebaseUser = verifiedFirebaseUser ?? firebaseAuth?.currentUser ?? null;
-    if (!firebaseUser?.phoneNumber) {
-      setFormError('Verify your phone number before completing your profile.');
-      setStep('phone');
+    if (!firebaseUser) {
+      setFormError('Sign in with email or phone before completing your profile.');
+      return;
+    }
+    const profilePhone = firebaseUser.phoneNumber ?? formatUgandanPhoneNumber(phone);
+    if (!profilePhone) {
+      setFormError('Enter a valid Ugandan phone number to finish your profile.');
       return;
     }
 
     const newUser: User = {
       id: firebaseUser.uid,
       name: fullName.trim(),
-      phone: firebaseUser.phoneNumber,
+      username: username.trim().replace(/\s+/g, '').toLowerCase(),
+      phone: profilePhone,
       email: email.trim(),
       avatar,
       district,
@@ -223,7 +266,7 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
       hasBiometrics: false,
       joinedDate: new Date().toISOString(),
       responseTime: 'New to ShopLocal',
-      badges: ['Phone verified'],
+      badges: firebaseUser.phoneNumber ? ['Phone verified'] : [],
       activePlan: 'FREE_18',
       completedSales: [],
     };
@@ -241,9 +284,11 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
   };
 
   const inputClass = `w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 ${darkMode ? 'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500' : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400'}`;
-  const stepTitle = step === 'phone' ? 'Sign in or create an account' : step === 'code' ? 'Check your messages' : 'Complete your profile';
+  const stepTitle = step === 'phone' || step === 'email' ? 'Sign in or create an account' : step === 'code' ? 'Check your messages' : 'Complete your profile';
   const stepDescription = step === 'phone'
     ? 'Use your Ugandan mobile number to continue securely.'
+    : step === 'email'
+      ? 'Use your email and password. Your session stays signed in on this device.'
     : step === 'code'
       ? `Enter the six-digit code sent to ${phoneForVerification}.`
       : 'Your phone is verified. Add the details buyers will see.';
@@ -269,11 +314,11 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
 
         <form
           className="max-h-[78vh] space-y-4 overflow-y-auto p-5"
-          onSubmit={step === 'phone' ? handleSendCode : step === 'code' ? handleVerifyCode : handleCompleteProfile}
+          onSubmit={step === 'phone' ? (authMethod === 'email' ? handleEmailAuth : handleSendCode) : step === 'email' ? handleEmailAuth : step === 'code' ? handleVerifyCode : handleCompleteProfile}
         >
           <div className={`flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed ${darkMode ? 'border-emerald-900 bg-emerald-950/35 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`} role="note">
             <Info className="mt-0.5 size-4 shrink-0" />
-            <p><strong>Firebase phone sign-in.</strong> Firebase verifies your number by SMS. Your marketplace profile and demo data stay in this browser; carrier messaging rates may apply.</p>
+            <p><strong>Secure account sign-in.</strong> Use email and password or phone SMS. Firebase keeps your session signed in on this device until you sign out.</p>
           </div>
 
           {!firebaseConfigured && (
@@ -283,15 +328,48 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
           )}
 
           {step === 'phone' && (
-            <div>
-              <label className="mb-1 block text-xs font-bold" htmlFor="firebase-phone">Ugandan mobile number</label>
-              <div className="relative">
-                <Smartphone className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                <input autoComplete="tel" className={inputClass} id="firebase-phone" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
+            <>
+              <div className={`grid grid-cols-2 rounded-xl p-1 ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                {(['email', 'phone'] as AuthMethod[]).map((method) => (
+                  <button key={method} className={`rounded-lg px-3 py-2 text-xs font-bold transition ${authMethod === method ? 'bg-emerald-600 text-white' : darkMode ? 'text-slate-300' : 'text-slate-600'}`} onClick={() => setAuthMethod(method)} type="button">
+                    {method === 'email' ? 'Email & password' : 'Phone SMS'}
+                  </button>
+                ))}
               </div>
-              <p className={`mt-1.5 text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>We will send one verification code. No password is needed.</p>
+              {authMethod === 'email' ? (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold" htmlFor="firebase-email-auth">Email address</label>
+                    <input autoComplete="email" className={inputClass.replace('pl-10', 'px-4')} id="firebase-email-auth" onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required type="email" value={email} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold" htmlFor="firebase-password">Password</label>
+                    <input autoComplete={isCreateAccount ? 'new-password' : 'current-password'} className={inputClass.replace('pl-10', 'px-4')} id="firebase-password" minLength={6} onChange={(event) => setPassword(event.target.value)} placeholder="At least 6 characters" required type="password" value={password} />
+                  </div>
+                  {isCreateAccount && <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>You will add your username and phone after creating the account.</p>}
+                  <button className="text-left text-xs font-bold text-emerald-600" onClick={() => setIsCreateAccount((value) => !value)} type="button">{isCreateAccount ? 'Already have an account? Sign in' : 'Need an account? Create one'}</button>
+                </>
+              ) : (
+                <div>
+                  <label className="mb-1 block text-xs font-bold" htmlFor="firebase-phone">Ugandan mobile number</label>
+                  <div className="relative">
+                    <Smartphone className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                    <input autoComplete="tel" className={inputClass} id="firebase-phone" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {step === 'email' && (
+            <div className="space-y-3">
+              <label className="mb-1 block text-xs font-bold" htmlFor="firebase-email-step">Email address</label>
+              <input autoComplete="email" className={inputClass.replace('pl-10', 'px-4')} id="firebase-email-step" onChange={(event) => setEmail(event.target.value)} required type="email" value={email} />
+              <label className="mb-1 block text-xs font-bold" htmlFor="firebase-password-step">Password</label>
+              <input autoComplete="current-password" className={inputClass.replace('pl-10', 'px-4')} id="firebase-password-step" minLength={6} onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
             </div>
           )}
+
 
           {step === 'code' && (
             <>
@@ -344,12 +422,24 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
               </div>
 
               <div>
+                <label className="mb-1 block text-xs font-bold" htmlFor="firebase-username">Username</label>
+                <input autoComplete="username" className={inputClass.replace('pl-10', 'px-4')} id="firebase-username" maxLength={30} minLength={3} onChange={(event) => setUsername(event.target.value.replace(/\s/g, ''))} placeholder="e.g. sarah_ug" required value={username} />
+              </div>
+
+              <div>
                 <label className="mb-1 block text-xs font-bold" htmlFor="firebase-email">Email address <span className={`font-normal ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>(optional)</span></label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                   <input autoComplete="email" className={inputClass} id="firebase-email" onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" type="email" value={email} />
                 </div>
               </div>
+
+              {!verifiedFirebaseUser?.phoneNumber && !firebaseAuth?.currentUser?.phoneNumber && (
+                <div>
+                  <label className="mb-1 block text-xs font-bold" htmlFor="firebase-profile-phone">Phone number</label>
+                  <input autoComplete="tel" className={inputClass.replace('pl-10', 'px-4')} id="firebase-profile-phone" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
+                </div>
+              )}
 
               <div>
                 <label className="mb-1 block text-xs font-bold" htmlFor="firebase-district">Trading district</label>
@@ -362,7 +452,7 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
               </div>
 
               <div className={`rounded-xl border px-3 py-2.5 text-xs ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
-                The verified phone is linked to Firebase Authentication. Profile details are stored locally in this demo.
+                Your username, email, password, and verified phone are linked to your Firebase account. Your session persists on this device until you sign out.
               </div>
             </>
           )}

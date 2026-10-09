@@ -79,16 +79,15 @@ import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { RecentlyViewed } from './components/RecentlyViewed';
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('shoplocal_theme') === 'dark');
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('shoplocal_theme') === 'dark';
+  });
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('shoplocal_theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('shoplocal_theme', 'light');
-    }
+    document.documentElement.classList.toggle('dark', darkMode);
+    document.body.style.colorScheme = darkMode ? 'dark' : 'light';
+    localStorage.setItem('shoplocal_theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
   // Persistence states with safe fallback to initial mock data if empty
@@ -1115,6 +1114,13 @@ export default function App() {
   // Handle Mobile navigation tabs
   const handleMobileTabChange = (tab: 'home' | 'saved' | 'post' | 'messages' | 'dashboard') => {
     setMobileTab(tab);
+    setIsChatOpen(false);
+    setActiveChatConvId(null);
+    setIsPostAdOpen(false);
+    setIsDashboardOpen(false);
+    setIsPricingModalOpen(false);
+    setManualBoostConfig(null);
+    setSelectedListing(null);
     if (tab === 'home') {
       setShowSavedOnly(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });

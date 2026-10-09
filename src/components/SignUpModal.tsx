@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Camera, CheckCircle2, Info, Loader2, Mail, MapPin, Smartphone, Upload, User as UserIcon, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Camera, CheckCircle2, Eye, EyeOff, Loader2, Mail, MapPin, Smartphone, Upload, User as UserIcon, X } from 'lucide-react';
 import { browserLocalPersistence, RecaptchaVerifier, setPersistence, signInWithEmailAndPassword, signInWithPhoneNumber, createUserWithEmailAndPassword, type ConfirmationResult, type User as FirebaseUser } from 'firebase/auth';
 import { firebaseAuth, firebaseConfigured, firebaseProfileStorageKey } from '../config/firebase';
 import { User, UgandaDistrict } from '../types';
@@ -73,6 +73,7 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState(initialFirebaseUser?.phoneNumber ?? '');
   const [phoneForVerification, setPhoneForVerification] = useState(initialFirebaseUser?.phoneNumber ?? '');
   const [email, setEmail] = useState('');
@@ -316,11 +317,6 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
           className="max-h-[78vh] space-y-4 overflow-y-auto p-5"
           onSubmit={step === 'phone' ? (authMethod === 'email' ? handleEmailAuth : handleSendCode) : step === 'email' ? handleEmailAuth : step === 'code' ? handleVerifyCode : handleCompleteProfile}
         >
-          <div className={`flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed ${darkMode ? 'border-emerald-900 bg-emerald-950/35 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`} role="note">
-            <Info className="mt-0.5 size-4 shrink-0" />
-            <p><strong>Secure account sign-in.</strong> Use email and password or phone SMS. Firebase keeps your session signed in on this device until you sign out.</p>
-          </div>
-
           {!firebaseConfigured && (
             <p className={`rounded-xl border p-3 text-xs ${darkMode ? 'border-amber-900 bg-amber-950/40 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-950'}`} role="status">
               Firebase web configuration is missing. Add the Firebase web app settings to the project environment before signing in.
@@ -344,9 +340,25 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-bold" htmlFor="firebase-password">Password</label>
-                    <input autoComplete={isCreateAccount ? 'new-password' : 'current-password'} className={inputClass.replace('pl-10', 'px-4')} id="firebase-password" minLength={6} onChange={(event) => setPassword(event.target.value)} placeholder="At least 6 characters" required type="password" value={password} />
+                    <div className="relative">
+                      <input autoComplete={isCreateAccount ? 'new-password' : 'current-password'} className={`${inputClass.replace('pl-10', 'px-4')} pr-11`} id="firebase-password" minLength={6} onChange={(event) => setPassword(event.target.value)} placeholder="At least 6 characters" required type={showPassword ? 'text' : 'password'} value={password} />
+                      <button aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600" onClick={() => setShowPassword((value) => !value)} type="button">
+                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
                   </div>
-                  {isCreateAccount && <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>You will add your username and phone after creating the account.</p>}
+                  {isCreateAccount && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-bold" htmlFor="firebase-username-auth">Username</label>
+                        <input autoComplete="username" className={inputClass.replace('pl-10', 'px-4')} id="firebase-username-auth" maxLength={30} minLength={3} onChange={(event) => setUsername(event.target.value.replace(/\s/g, ''))} placeholder="sarah_ug" required value={username} />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-bold" htmlFor="firebase-phone-auth">Phone number</label>
+                        <input autoComplete="tel" className={inputClass.replace('pl-10', 'px-4')} id="firebase-phone-auth" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
+                      </div>
+                    </div>
+                  )}
                   <button className="text-left text-xs font-bold text-emerald-600" onClick={() => setIsCreateAccount((value) => !value)} type="button">{isCreateAccount ? 'Already have an account? Sign in' : 'Need an account? Create one'}</button>
                 </>
               ) : (
@@ -366,7 +378,12 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
               <label className="mb-1 block text-xs font-bold" htmlFor="firebase-email-step">Email address</label>
               <input autoComplete="email" className={inputClass.replace('pl-10', 'px-4')} id="firebase-email-step" onChange={(event) => setEmail(event.target.value)} required type="email" value={email} />
               <label className="mb-1 block text-xs font-bold" htmlFor="firebase-password-step">Password</label>
-              <input autoComplete="current-password" className={inputClass.replace('pl-10', 'px-4')} id="firebase-password-step" minLength={6} onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
+              <div className="relative">
+                <input autoComplete="current-password" className={`${inputClass.replace('pl-10', 'px-4')} pr-11`} id="firebase-password-step" minLength={6} onChange={(event) => setPassword(event.target.value)} required type={showPassword ? 'text' : 'password'} value={password} />
+                <button aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600" onClick={() => setShowPassword((value) => !value)} type="button">
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </div>
           )}
 

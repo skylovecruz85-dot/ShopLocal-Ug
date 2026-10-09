@@ -5,7 +5,7 @@ import {
   Camera, 
   MessageSquare, 
   ShieldCheck, 
-  Crown, 
+
   User as UserIcon, 
   Bell, 
   ShoppingBag, 
@@ -32,7 +32,6 @@ interface HeaderProps {
   onOpenMessages: () => void;
   onOpenNotifications: () => void;
   onOpenDashboard: () => void;
-  onOpenProModal: () => void;
   onOpenBiometrics: () => void;
   onOpenSafetyTips: () => void;
   onOpenPayoutSettings: () => void;
@@ -70,7 +69,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMessages,
   onOpenNotifications,
   onOpenDashboard,
-  onOpenProModal,
   onOpenAdminBoostOrders,
   pendingBoostOrdersCount = 0,
   onOpenSafetyTips,
@@ -234,13 +232,6 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>Safety Rules</span>
                     </button>
 
-                    <button
-                      onClick={() => { onOpenProModal(); setMobileMenuOpen(false); }}
-                      className="w-full px-4 py-2 text-left text-xs font-bold flex items-center gap-2 cursor-pointer text-[#ff7e00] hover:bg-orange-50/60"
-                    >
-                      <Crown className="w-4 h-4 text-[#ff7e00]" />
-                      <span>Boost Ad</span>
-                    </button>
 
                     {onOpenAdminBoostOrders && (
                       <button

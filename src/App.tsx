@@ -3,7 +3,7 @@ import {
   Filter, 
   MapPin, 
   ShieldCheck, 
-  Crown, 
+
   Sparkles, 
   ArrowUpDown, 
   Check, 
@@ -77,13 +77,10 @@ import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { RecentlyViewed } from './components/RecentlyViewed';
 
 export default function App() {
-  // Dark mode state - explicitly force light mode default on load
+  // Keep the user's appearance preference across visits.
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('shoplocal_theme');
-    if (saved === 'dark') {
-      localStorage.setItem('shoplocal_theme', 'light');
-    }
-    return false;
+    return saved === 'dark';
   });
 
   useEffect(() => {
@@ -1046,6 +1043,9 @@ export default function App() {
   const handleMobileTabChange = (tab: 'home' | 'saved' | 'post' | 'messages' | 'dashboard') => {
     setMobileTab(tab);
     if (tab === 'home') {
+      setIsChatOpen(false);
+      setActiveChatConvId(null);
+      setIsDashboardOpen(false);
       setShowSavedOnly(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (tab === 'saved') {
@@ -1077,7 +1077,6 @@ export default function App() {
         onOpenMessages={() => setIsChatOpen(true)}
         onOpenNotifications={() => setIsNotificationCenterOpen(true)}
         onOpenDashboard={() => setIsDashboardOpen(true)}
-        onOpenProModal={() => setIsPricingModalOpen(true)}
         onOpenAdminBoostOrders={() => setIsAdminBoostOrdersOpen(true)}
         pendingBoostOrdersCount={boostOrders.filter(o => o.status === 'Pending').length}
         onOpenBiometrics={() => setIsBiometricsModalOpen(true)}
@@ -1147,13 +1146,6 @@ export default function App() {
                     >
                       <PlusCircle className="w-3.5 h-3.5 stroke-[2.5]" />
                       <span>POST FREE AD</span>
-                    </button>
-                    <button
-                      onClick={() => setIsPricingModalOpen(true)}
-                      className="px-3.5 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-xs transition-colors cursor-pointer flex items-center gap-1"
-                    >
-                      <Crown className="w-3.5 h-3.5 text-amber-200" />
-                      <span>Boost Ad</span>
                     </button>
                   </div>
                 </div>

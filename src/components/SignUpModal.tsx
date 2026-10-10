@@ -236,15 +236,12 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
                 </div>
               </div>
               {isCreateAccount && (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div>
                   <div>
                     <label className="mb-1 block text-xs font-bold" htmlFor="firebase-username-auth">Username</label>
                     <input autoComplete="username" className={inputClass.replace('pl-10', 'px-4')} id="firebase-username-auth" maxLength={30} minLength={3} onChange={(event) => setUsername(event.target.value.replace(/\s/g, ''))} placeholder="sarah_ug" required value={username} />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-bold" htmlFor="firebase-phone-auth">Phone number</label>
-                    <input autoComplete="tel" className={inputClass.replace('pl-10', 'px-4')} id="firebase-phone-auth" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
-                  </div>
+
                 </div>
               )}
               <button className="text-left text-xs font-bold text-emerald-600" onClick={() => setIsCreateAccount((value) => !value)} type="button">{isCreateAccount ? 'Already have an account? Sign in' : 'Need an account? Create one'}</button>

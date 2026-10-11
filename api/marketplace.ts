@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { auth } from './auth';
-import { db, favorites, listings, profiles } from './db';
+import { conversations, db, favorites, listings, messages, profiles } from './db';
 
 type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
@@ -32,6 +32,27 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       const username = required(input.username, 'username').replace(/\s/g, '').toLowerCase();
       const [profile] = await db.insert(profiles).values({ id: randomUUID(), userId: session.user.id, username, phone: typeof input.phone === 'string' ? input.phone.trim() : null, district: typeof input.district === 'string' ? input.district.trim() : null, bio: typeof input.bio === 'string' ? input.bio.trim() : null, avatar: typeof input.avatar === 'string' ? input.avatar : null }).onConflictDoUpdate({ target: profiles.userId, set: { username, phone: typeof input.phone === 'string' ? input.phone.trim() : null, district: typeof input.district === 'string' ? input.district.trim() : null, bio: typeof input.bio === 'string' ? input.bio.trim() : null, avatar: typeof input.avatar === 'string' ? input.avatar : null, updatedAt: new Date() } }).returning();
       return json(res, 200, { data: profile });
+    }
+    if (url.pathname === '/api/marketplace/conversations' && req.method === 'GET') {
+      const rows = await db.select().from(conversations).where(or(eq(conversations.userAId, session.user.id), eq(conversations.userBId, session.user.id))).orderBy(desc(conversations.lastMessageAt));
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/messages' && req.method === 'GET') {
+      const conversationId = required(url.searchParams.get('conversationId'), 'conversationId');
+      const [conversation] = await db.select().from(conversations).where(and(eq(conversations.id, conversationId), or(eq(conversations.userAId, session.user.id), eq(conversations.userBId, session.user.id)))).limit(1);
+      if (!conversation) return json(res, 404, { error: 'Conversation not found.' });
+      const rows = await db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(messages.createdAt);
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/messages' && req.method === 'POST') {
+      const input = body(req);
+      const conversationId = required(input.conversationId, 'conversationId');
+      const messageBody = required(input.body, 'body');
+      const [conversation] = await db.select().from(conversations).where(and(eq(conversations.id, conversationId), or(eq(conversations.userAId, session.user.id), eq(conversations.userBId, session.user.id)))).limit(1);
+      if (!conversation) return json(res, 404, { error: 'Conversation not found.' });
+      const [message] = await db.insert(messages).values({ id: randomUUID(), conversationId, senderId: session.user.id, body: messageBody.slice(0, 4000) }).returning();
+      await db.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, conversationId));
+      return json(res, 201, { data: message });
     }
     if (url.pathname === '/api/marketplace/favorites' && req.method === 'GET') {
       const rows = await db.select().from(favorites).where(eq(favorites.userId, session.user.id));

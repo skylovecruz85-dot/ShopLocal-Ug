@@ -42,6 +42,12 @@ export const marketplaceApi = {
   removeFavorite: (listingId: string) => request<null>(`/api/marketplace/favorites?listingId=${encodeURIComponent(listingId)}`, { method: 'DELETE' }),
   listNotifications: () => request<unknown[]>('/api/marketplace/notifications'),
   listOrders: () => request<unknown[]>('/api/marketplace/orders'),
+  createListing: (input: Record<string, unknown>) => request<ApiListing>('/api/marketplace/listings', { method: 'POST', body: JSON.stringify(input) }),
+  updateListing: (listingId: string, input: Record<string, unknown>) => request<ApiListing>(`/api/marketplace/listings/${encodeURIComponent(listingId)}`, { method: 'PUT', body: JSON.stringify(input) }),
+  deleteListing: (listingId: string) => request<{ id: string }>(`/api/marketplace/listings/${encodeURIComponent(listingId)}`, { method: 'DELETE' }),
+  listConversations: () => request<unknown[]>('/api/marketplace/conversations'),
+  listMessages: (conversationId: string) => request<unknown[]>(`/api/marketplace/messages?conversationId=${encodeURIComponent(conversationId)}`),
+  sendMessage: (conversationId: string, message: string) => request<unknown>('/api/marketplace/messages', { method: 'POST', body: JSON.stringify({ conversationId, body: message }) }),
   createOrder: (listingId: string, quantity = 1) => request<unknown>('/api/marketplace/orders', { method: 'POST', body: JSON.stringify({ listingId, quantity }) }),
   reportListing: (listingId: string, reason: string, details?: string) => request<unknown>('/api/marketplace/reports', { method: 'POST', body: JSON.stringify({ listingId, reason, details }) }),
 };

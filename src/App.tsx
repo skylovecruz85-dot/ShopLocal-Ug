@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { onAuthStateChanged, signOut, type User as FirebaseUser } from 'firebase/auth';
 import { firebaseAuth } from './config/firebase';
+import { signOut, type User as FirebaseUser } from 'firebase/auth';
+
 import { 
   Filter, 
   MapPin, 
@@ -105,8 +106,8 @@ export default function App() {
   }, [apiListings]);
 
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_CURRENT_USER);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [firebaseAuthReady, setFirebaseAuthReady] = useState(!firebaseAuth);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(firebaseAuth?.currentUser ?? null);
+  const [firebaseAuthReady] = useState(true);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -190,32 +191,17 @@ export default function App() {
   const canReviewBoostOrders = boostOrdersData?.canReview === true;
 
   useEffect(() => {
-    if (!firebaseAuth) {
-      setFirebaseAuthReady(true);
-      return;
-    }
-
-    return onAuthStateChanged(firebaseAuth, (user) => {
-      setFirebaseUser(user);
-      if (!user) {
-        setIsAdminBoostOrdersOpen(false);
-        setManualBoostConfig(null);
-      }
-      if (user) {
-        void fetch('/api/marketplace/profile', { credentials: 'include' })
-          .then((response) => response.ok ? response.json() : null)
-          .then((payload: { data?: User } | null) => {
-            if (payload?.data) {
-              setCurrentUser(payload.data);
-              setIsSignUpModalOpen(false);
-            } else {
-              setIsSignUpModalOpen(true);
-            }
-          })
-          .catch(() => setIsSignUpModalOpen(true));
-      }
-      setFirebaseAuthReady(true);
-    });
+    void fetch('/api/auth/get-session', { credentials: 'include' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((session: { user?: { id: string; name: string; email: string } } | null) => {
+        if (!session?.user) return;
+        return fetch('/api/marketplace/profile', { credentials: 'include' });
+      })
+      .then((response) => response?.ok ? response.json() : null)
+      .then((payload: { data?: User } | null) => {
+        if (payload?.data) { setCurrentUser(payload.data); setIsSignUpModalOpen(false); }
+      })
+      .finally(() => undefined);
   }, []);
 
   // Counts

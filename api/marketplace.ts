@@ -114,6 +114,27 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       const [report] = await db.insert(moderationReports).values({ id: randomUUID(), reporterId: session.user.id, listingId, reason: reason.slice(0, 120), details: typeof input.details === 'string' ? input.details.trim().slice(0, 2000) : null }).returning();
       return json(res, 201, { data: report });
     }
+    if ((req.method === 'PUT' || req.method === 'DELETE') && url.pathname.startsWith('/api/marketplace/listings/')) {
+      const listingId = required(url.pathname.split('/').pop(), 'listingId');
+      const [owned] = await db.select().from(listings).where(and(eq(listings.id, listingId), eq(listings.userId, session.user.id))).limit(1);
+      if (!owned) return json(res, 404, { error: 'Listing not found.' });
+      if (req.method === 'DELETE') {
+        await db.update(listings).set({ status: 'deleted', updatedAt: new Date() }).where(eq(listings.id, listingId));
+        return json(res, 200, { data: { id: listingId } });
+      }
+      const input = body(req);
+      const updates = {
+        title: typeof input.title === 'string' ? input.title.trim().slice(0, 160) : owned.title,
+        description: typeof input.description === 'string' ? input.description.trim().slice(0, 4000) : owned.description,
+        category: typeof input.category === 'string' ? input.category.trim() : owned.category,
+        district: typeof input.district === 'string' ? input.district.trim() : owned.district,
+        price: Number.isInteger(Number(input.price)) && Number(input.price) > 0 ? Number(input.price) : owned.price,
+        images: Array.isArray(input.images) ? input.images.filter((item): item is string => typeof item === 'string').slice(0, 8) : owned.images,
+        updatedAt: new Date(),
+      };
+      const [updated] = await db.update(listings).set(updates).where(eq(listings.id, listingId)).returning();
+      return json(res, 200, { data: updated });
+    }
     if (req.method === 'POST' && url.pathname === '/api/marketplace/listings') {
       const input = body(req);
       const title = required(input.title, 'title'); const description = required(input.description, 'description'); const category = required(input.category, 'category'); const district = required(input.district, 'district');

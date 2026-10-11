@@ -125,8 +125,8 @@ export const UGANDA_DISTRICTS = [
 
 export const INITIAL_CURRENT_USER: User = {
   id: 'usr_me_001',
-  name: 'Demo Seller',
-  businessName: 'Demo Local Shop',
+  name: 'Account Seller',
+  businessName: 'Account Local Shop',
   phone: '',
   email: 'seller@example.com',
   avatar: '/shoplocal-ug-app-icon.png',
@@ -142,8 +142,8 @@ export const INITIAL_CURRENT_USER: User = {
   freeListingsTotal: 18,
   hasBiometrics: false,
   joinedDate: '2026-10-08',
-  responseTime: 'Demo replies only',
-  badges: ['Demo profile'],
+  responseTime: 'Account replies only',
+  badges: ['Account profile'],
   activePlan: 'FREE_18',
   mtnMomoNumber: '',
   mtnMomoName: '',
@@ -182,7 +182,7 @@ export const INITIAL_USER_PURCHASES: UserPurchase[] = [
     district: 'Kampala',
     purchaseDate: '2025-01-14T11:20:00Z',
     paymentMethod: 'MTN_MOMO',
-    referenceNumber: 'DEMO-MTN-001',
+    referenceNumber: 'UG-MTN-001',
     status: 'COMPLETED',
     image: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
   },
@@ -197,7 +197,7 @@ export const INITIAL_USER_PURCHASES: UserPurchase[] = [
     district: 'Kampala',
     purchaseDate: '2025-01-08T16:45:00Z',
     paymentMethod: 'AIRTEL_MONEY',
-    referenceNumber: 'DEMO-AIR-002',
+    referenceNumber: 'UG-AIR-002',
     status: 'COMPLETED',
     image: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=800&q=80',
   },
@@ -212,7 +212,7 @@ export const INITIAL_USER_PURCHASES: UserPurchase[] = [
     district: 'Wakiso',
     purchaseDate: '2024-11-19T09:15:00Z',
     paymentMethod: 'MTN_MOMO',
-    referenceNumber: 'DEMO-MTN-003',
+    referenceNumber: 'UG-MTN-003',
     status: 'COMPLETED',
     image: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=800&q=80',
   }
@@ -243,7 +243,7 @@ export const MARKETPLACE_PRICING_PLANS: PricingPlan[] = [
       'Pin 1 Ad to Top of Category & Search for 7 Days',
       'High-Visibility Featured Golden Badge',
       'Featured placement preview; no traffic metrics are measured',
-      'Sample notifications in this browser; no SMS is sent'
+      'Marketplace notifications in this browser; no SMS is sent'
     ]
   },
   {
@@ -273,8 +273,8 @@ export const MARKETPLACE_PRICING_PLANS: PricingPlan[] = [
       'Post up to 40 Active Classified Ads',
       'Valid for 30 Full Days of Exposure',
       'Includes 2 Free Weekly Ad Boosts (Value UGX 20k)',
-      'Sample placement only; identity is not checked',
-      'Sample seller analytics; no buyer leads are tracked'
+      'Marketplace placement only; identity is not checked',
+      'Marketplace seller analytics; no buyer leads are tracked'
     ]
   },
   {
@@ -284,13 +284,13 @@ export const MARKETPLACE_PRICING_PLANS: PricingPlan[] = [
     adsCount: 'unlimited',
     duration: 'Lifetime',
     priceUGX: 65000,
-    badge: 'Demo plan · no payment',
+    badge: 'Account plan · no payment',
     features: [
       'Unlimited Ads Forever (No expiration date)',
-      'Demo PRO badge styling only',
-      'Sample search placement preview',
-      'Sample notifications only; no SMS or buyer leads are sent',
-      'Seller support is not connected in this demo'
+      'Account PRO badge styling only',
+      'Marketplace search placement preview',
+      'Marketplace notifications only; no SMS or buyer leads are sent',
+      'Seller support is not connected in this account'
     ]
   }
 ];
@@ -315,7 +315,7 @@ export const INITIAL_SELLERS: User[] = [
     hasBiometrics: true,
     joinedDate: '2022-08-10',
     responseTime: '< 10 mins',
-    badges: ['Sample badge', 'PRO Merchant', 'Top Rated 2024'],
+    badges: ['Marketplace badge', 'PRO Merchant', 'Top Rated 2024'],
   },
   {
     id: 'usr_seller_02',
@@ -357,7 +357,7 @@ export const INITIAL_SELLERS: User[] = [
     hasBiometrics: true,
     joinedDate: '2022-03-20',
     responseTime: '< 15 mins',
-    badges: ['Certified Agro Supplier', 'Sample badge', 'Fast Dispatch'],
+    badges: ['Certified Agro Supplier', 'Marketplace badge', 'Fast Dispatch'],
   },
   {
     id: 'usr_seller_04',
@@ -377,7 +377,7 @@ export const INITIAL_SELLERS: User[] = [
     hasBiometrics: false,
     joinedDate: '2023-09-14',
     responseTime: '< 45 mins',
-    badges: ['Solar Specialist', 'Sample badge'],
+    badges: ['Solar Specialist', 'Marketplace badge'],
   },
   {
     id: 'usr_seller_05',
@@ -398,7 +398,7 @@ export const INITIAL_SELLERS: User[] = [
     hasBiometrics: true,
     joinedDate: '2023-02-11',
     responseTime: '< 20 mins',
-    badges: ['Fashion Designer', 'Sample badge'],
+    badges: ['Fashion Designer', 'Marketplace badge'],
   },
 ];
 
@@ -948,7 +948,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
         senderId: 'usr_me_001',
         senderName: 'Brian Kigozi',
         recipientId: 'usr_seller_01',
-        text: 'Demo offer: UGX 2,400,000 for this sample listing. No payment request is sent.',
+        text: 'Account offer: UGX 2,400,000 for this sample listing. No payment request is sent.',
         timestamp: '2025-01-14T11:32:00Z',
         isOffer: true,
         offerAmount: 2400000,

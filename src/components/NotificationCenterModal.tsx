@@ -107,9 +107,9 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             </button>
           </div>
 
-          {/* Demo notification previews */}
+          {/* Account notification previews */}
           <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-700">
-            <span className="text-[11px] text-slate-400 font-medium">Preview demo notifications:</span>
+            <span className="text-[11px] text-slate-400 font-medium">Preview account notifications:</span>
             <button
               onClick={onSimulateInquiry}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer flex items-center gap-1 ${

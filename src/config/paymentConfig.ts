@@ -19,7 +19,7 @@ export const PAYMENT_CONFIG = {
 export const ADMIN_CONFIG = {
   ownerNumber: '',
   ownerAirtel: '',
-  loginEmail: 'demo@example.com',
+  loginEmail: 'support@shoplocal.ug',
   businessName: 'ShopLocal UG',
 };
 

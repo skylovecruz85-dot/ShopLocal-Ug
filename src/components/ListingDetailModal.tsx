@@ -183,7 +183,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                 <ul className="list-disc list-inside space-y-0.5 text-amber-800">
                   <li>Meet in well-lit public places (e.g., Acacia Mall, Garden City, Posta Uganda).</li>
                   <li>Inspect and test items thoroughly before releasing funds.</li>
-                  <li>Checkout in this demo is simulated. Inspect items and agree on safe payment terms independently.</li>
+                  <li>Checkout in this marketplace is simulated. Inspect items and agree on safe payment terms independently.</li>
                   <li>Do not send advance transport fare to unknown callers.</li>
                 </ul>
               </div>
@@ -206,7 +206,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                       {listing.seller.isVerified && (
                         <div 
                           className="absolute -bottom-1 -right-1 bg-amber-400 text-slate-950 rounded-full p-0.5 ring-2 ring-white dark:ring-slate-800 shadow-xs"
-                          title="Sample badge from demo data"
+                          title="Sample badge from marketplace data"
                         >
                           <ShieldCheck className="w-3.5 h-3.5 stroke-[2.5]" />
                         </div>
@@ -247,7 +247,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                 <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700 grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
                   <div className="flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#3db83a]" />
-                    <span>{listing.seller.isVerified ? 'Sample badge' : 'Identity not checked in demo'}</span>
+                    <span>{listing.seller.isVerified ? 'Sample badge' : 'Identity not checked in marketplace'}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-[#3db83a]" />
@@ -306,19 +306,19 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
 
               {/* Action Buttons */}
               <div className="space-y-2.5">
-                {/* Demo chat & negotiate */}
+                {/* Marketplace chat & negotiate */}
                 <button
                   onClick={() => onOpenChat(listing)}
                   className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>Try demo chat & offer</span>
+                  <span>Try marketplace chat & offer</span>
                 </button>
 
                 <div className={`rounded-xl border p-3 text-xs leading-relaxed ${
                   darkMode ? 'bg-slate-800/60 border-slate-700 text-slate-300' : 'bg-amber-50 border-amber-200 text-amber-900'
                 }`}>
-                  Seller phone and WhatsApp links are disabled in this preview. Use the in-app demo chat instead.
+                  Seller phone and WhatsApp links are disabled in this preview. Use the in-app marketplace chat instead.
                 </div>
 
                 {/* Safety & Report row */}

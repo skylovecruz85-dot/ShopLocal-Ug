@@ -46,7 +46,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
   const timeoutRef = useRef<number | null>(null);
 
   const isDirectToSeller = purpose === 'ESCROW_PURCHASE' && Boolean(sellerName);
-  const recipientName = isDirectToSeller ? sellerName : 'ShopLocal UG demo';
+  const recipientName = isDirectToSeller ? sellerName : 'ShopLocal UG payment';
 
   useEffect(() => () => {
     if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
@@ -83,15 +83,14 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
     timeoutRef.current = window.setTimeout(() => {
       const digits = phoneNumber.replace(/\D/g, '');
       const transaction: PaymentTransaction = {
-        id: `demo_tx_${Date.now()}`,
-        reference: `DEMO-${generateUgTxRef(selectedMethod)}`,
+        id: `payment_tx_${Date.now()}`,
+        reference: `UG-${generateUgTxRef(selectedMethod)}`,
         method: selectedMethod,
         phoneNumber: `Test number ending ${digits.slice(-4)}`,
         amount,
         purpose,
         status: 'COMPLETED',
-        isDemo: true,
-        date: new Date().toISOString(),
+              date: new Date().toISOString(),
         itemTitle,
         listingId,
         recipientName,
@@ -116,7 +115,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm">
       <section
-        aria-labelledby="demo-checkout-title"
+        aria-labelledby="payment-checkout-title"
         aria-modal="true"
         className={`relative w-full max-w-md overflow-hidden rounded-3xl border shadow-2xl ${panelClass}`}
         onClick={(event) => event.stopPropagation()}
@@ -136,7 +135,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
               <Smartphone className="size-5" />
             </div>
             <div>
-              <h2 className="font-display text-base font-extrabold" id="demo-checkout-title">Demo checkout</h2>
+              <h2 className="font-display text-base font-extrabold" id="payment-checkout-title">Payment checkout</h2>
               <p className={`text-[11px] ${secondaryTextClass}`}>Preview only · no live payment</p>
             </div>
           </div>
@@ -160,7 +159,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
 
             <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200" role="note">
               <Info className="mt-0.5 size-4 shrink-0" />
-              <p><strong>Interactive demo only.</strong> No request is sent to MTN or Airtel, no PIN is requested, and no money moves.</p>
+              <p><strong>Interactive payment only.</strong> No request is sent to MTN or Airtel, no PIN is requested, and no money moves.</p>
             </div>
 
             <fieldset>
@@ -174,7 +173,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
                 >
                   <span className="mx-auto mb-1 flex size-8 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-slate-950">MTN</span>
                   <span className="block text-xs font-bold">MTN MoMo</span>
-                  <span className={`block text-[10px] ${secondaryTextClass}`}>Demo selection</span>
+                  <span className={`block text-[10px] ${secondaryTextClass}`}>Payment selection</span>
                 </button>
                 <button
                   aria-pressed={selectedMethod === 'AIRTEL_MONEY'}
@@ -184,32 +183,32 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
                 >
                   <span className="mx-auto mb-1 flex size-8 items-center justify-center rounded-full bg-red-600 text-[10px] font-black text-white">AIR</span>
                   <span className="block text-xs font-bold">Airtel Money</span>
-                  <span className={`block text-[10px] ${secondaryTextClass}`}>Demo selection</span>
+                  <span className={`block text-[10px] ${secondaryTextClass}`}>Payment selection</span>
                 </button>
               </div>
             </fieldset>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold" htmlFor="demo-phone-number">Test mobile number</label>
+              <label className="mb-1.5 block text-xs font-bold" htmlFor="payment-phone-number">Test mobile number</label>
               <input
-                aria-describedby={phoneError ? 'demo-phone-error' : 'demo-phone-help'}
+                aria-describedby={phoneError ? 'payment-phone-error' : 'payment-phone-help'}
                 aria-invalid={Boolean(phoneError)}
                 autoComplete="off"
                 className={`w-full rounded-xl border px-3.5 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 ${controlClass}`}
-                id="demo-phone-number"
+                id="payment-phone-number"
                 inputMode="tel"
                 onChange={(event) => handlePhoneChange(event.target.value)}
                 placeholder="0772 000 000"
                 type="tel"
                 value={phoneNumber}
               />
-              <p className={`mt-1 text-[11px] ${phoneError ? 'text-red-500' : secondaryTextClass}`} id={phoneError ? 'demo-phone-error' : 'demo-phone-help'}>
+              <p className={`mt-1 text-[11px] ${phoneError ? 'text-red-500' : secondaryTextClass}`} id={phoneError ? 'payment-phone-error' : 'payment-phone-help'}>
                 {phoneError || 'Use a test number. It is used only in this preview and is not saved.'}
               </p>
             </div>
 
             <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-bold text-white transition-colors hover:bg-emerald-700" type="submit">
-              Continue to demo confirmation <ArrowRight className="size-4" />
+              Continue to payment confirmation <ArrowRight className="size-4" />
             </button>
           </form>
         )}
@@ -225,12 +224,12 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
             </div>
 
             <div className={`rounded-2xl border p-4 text-sm ${darkMode ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-slate-50'}`}>
-              <div className="flex justify-between gap-3"><span className={secondaryTextClass}>Demo amount</span><strong>{formatUGX(amount)}</strong></div>
-              <div className="mt-2 flex justify-between gap-3"><span className={secondaryTextClass}>Demo recipient</span><strong className="text-right">{recipientName}</strong></div>
+              <div className="flex justify-between gap-3"><span className={secondaryTextClass}>Payment amount</span><strong>{formatUGX(amount)}</strong></div>
+              <div className="mt-2 flex justify-between gap-3"><span className={secondaryTextClass}>Payment recipient</span><strong className="text-right">{recipientName}</strong></div>
             </div>
 
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200" role="note">
-              No telecom prompt was sent. Never enter or share a real mobile money PIN in this demo.
+              No telecom prompt was sent. Never enter or share a real mobile money PIN in this payment.
             </div>
 
             <div className="flex gap-2">
@@ -243,8 +242,8 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
         {step === 'processing' && (
           <div aria-live="polite" className="space-y-4 p-8 text-center">
             <div className="mx-auto size-11 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
-            <h3 className="font-display text-base font-extrabold">Preparing demo receipt</h3>
-            <p className={`mx-auto max-w-xs text-xs leading-relaxed ${secondaryTextClass}`}>This short animation is local to the demo. No carrier or payment service is contacted.</p>
+            <h3 className="font-display text-base font-extrabold">Preparing payment receipt</h3>
+            <p className={`mx-auto max-w-xs text-xs leading-relaxed ${secondaryTextClass}`}>This short animation is local to the payment. No carrier or payment service is contacted.</p>
           </div>
         )}
 
@@ -254,13 +253,13 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
               <CheckCircle2 className="size-8" />
             </div>
             <div>
-              <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-900 dark:bg-amber-950 dark:text-amber-200">Demo only</span>
+              <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-900 dark:bg-amber-950 dark:text-amber-200">Payment only</span>
               <h3 className="mt-2 font-display text-xl font-extrabold">Payment simulated</h3>
               <p className={`mt-1 text-xs leading-relaxed ${secondaryTextClass}`}>No payment was initiated, no funds moved, and this screen is not proof of payment.</p>
             </div>
 
             <div className={`space-y-2 rounded-2xl border p-4 text-left text-xs ${darkMode ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-slate-50'}`}>
-              <div className="flex justify-between gap-3"><span className={secondaryTextClass}>Demo reference</span><span className="font-mono font-bold">{completedTx.reference}</span></div>
+              <div className="flex justify-between gap-3"><span className={secondaryTextClass}>Payment reference</span><span className="font-mono font-bold">{completedTx.reference}</span></div>
               <div className="flex justify-between gap-3"><span className={secondaryTextClass}>Displayed amount</span><span className="font-bold">{formatUGX(completedTx.amount)}</span></div>
               <div className="flex justify-between gap-3"><span className={secondaryTextClass}>Network preview</span><span className="font-semibold">{completedTx.method === 'MTN_MOMO' ? 'MTN MoMo' : 'Airtel Money'}</span></div>
               <div className="flex justify-between gap-3"><span className={secondaryTextClass}>Result</span><span className="font-bold text-amber-700 dark:text-amber-300">Not paid — simulated</span></div>

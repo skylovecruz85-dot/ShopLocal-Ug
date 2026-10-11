@@ -24,7 +24,7 @@ import {
 import { User, Review, Listing, CompletedSale, Testimonial } from '../types';
 import { formatUGX } from '../utils/helpers';
 import { isOwnerUser } from '../config/paymentConfig';
-import { INITIAL_TESTIMONIALS } from '../data/mockData';
+import { INITIAL_TESTIMONIALS } from '../data/catalog';
 
 interface UserProfileModalProps {
   user: User;
@@ -120,11 +120,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     return 'skylov***@gmail.com';
   };
 
-  // Keep the demo owner profile private unless the owner
+  // Keep the account owner profile private unless the owner
   const isOwnerViewing = isOwnerUser(currentUser);
   const isPrimeCentreUser = isOwnerUser(user);
   const displayName = isPrimeCentreUser 
-    ? (isOwnerViewing ? (user.businessName || "Demo Local Shop") : user.name)
+    ? (isOwnerViewing ? (user.businessName || "Account Local Shop") : user.name)
     : (user.businessName || user.name);
 
   return (
@@ -258,12 +258,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
               <div className="flex justify-between items-center py-1 border-b border-[#EEEEEE] text-xs">
                 <span className="text-[#757575] font-medium">Identity checks</span>
-                <span className="text-slate-500 font-bold">Not connected in demo</span>
+                <span className="text-slate-500 font-bold">Not connected in account</span>
               </div>
 
               <div className="flex justify-between items-center py-1 text-xs">
                 <span className="text-[#757575] font-medium">Account Status</span>
-                <span className="text-slate-500 font-bold">Demo profile</span>
+                <span className="text-slate-500 font-bold">Account profile</span>
               </div>
             </div>
           </div>

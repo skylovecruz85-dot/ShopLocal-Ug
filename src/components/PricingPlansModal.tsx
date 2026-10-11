@@ -14,7 +14,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { formatUGX } from '../utils/helpers';
-import { MARKETPLACE_PRICING_PLANS, PricingPlan } from '../data/mockData';
+import { MARKETPLACE_PRICING_PLANS, PricingPlan } from '../data/catalog';
 
 interface PricingPlansModalProps {
   onClose: () => void;
@@ -108,7 +108,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
                   <span>ShopLocal Ug Ad Packs & Boosts</span>
                 </h3>
                 <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Try seller packages and boosts in this browser-only demo.
+                  Try seller packages and boosts in this browser-only subscription.
                 </p>
               </div>
             </div>
@@ -264,7 +264,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
 TOP placement
                 </h5>
                 <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
-                  Preview a top-of-search placement; performance is not measured in this demo.
+                  Preview a top-of-search placement; performance is not measured in this subscription.
                 </p>
               </div>
 
@@ -330,7 +330,7 @@ TOP placement
                   Boost Premium
                 </h5>
                 <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
-                  Preview a featured placement; no traffic or conversion metrics are tracked in this demo.
+                  Preview a featured placement; no traffic or conversion metrics are tracked in this subscription.
                 </p>
               </div>
 

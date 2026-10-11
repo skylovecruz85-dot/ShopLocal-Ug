@@ -96,7 +96,7 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
             <div>
               <h3 className="font-display font-black text-base sm:text-lg flex items-center gap-2">
                 <Smartphone className="w-5 h-5 text-emerald-600" />
-                <span>Demo payout preferences</span>
+                <span>Payout preferences</span>
               </h3>
               <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Preview payout preferences; nothing connects to a telecom provider.
@@ -122,10 +122,10 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
           }`}>
             <div className="flex items-center gap-1.5 font-bold">
               <Zap className="w-4 h-4 text-amber-500" />
-              <span>Local demo settings only</span>
+              <span>Local payout settings only</span>
             </div>
             <p className="opacity-90">
-              This browser-only demo never initiates carrier payments, SMS alerts, or cashouts. Values here are saved locally for preview only.
+              This browser-only payout never initiates carrier payments, SMS alerts, or cashouts. Values here are saved locally for preview only.
             </p>
           </div>
 
@@ -262,7 +262,7 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
               }`}
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              Sample field only; merchant codes are not validated or connected in this demo.
+              Sample field only; merchant codes are not validated or connected in this payout.
             </p>
           </div>
 
@@ -271,7 +271,7 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
             darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
           }`}>
             <div>
-              <span className="text-xs font-bold block">Keep demo payout preferences</span>
+              <span className="text-xs font-bold block">Keep payout payout preferences</span>
               <span className="text-[11px] text-slate-400">This setting does not enable live payments or SMS alerts.</span>
             </div>
             <input
@@ -288,7 +288,7 @@ export const PayoutSettingsModal: React.FC<PayoutSettingsModalProps> = ({
               className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>{isSaved ? 'Demo preferences saved' : 'Save demo preferences'}</span>
+              <span>{isSaved ? 'Preferences saved' : 'Save payout preferences'}</span>
             </button>
           </div>
 

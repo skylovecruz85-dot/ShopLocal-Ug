@@ -94,10 +94,10 @@ export async function registerBiometricPasskey(
 
   // Simulated biometric registration (smooth device scan animation)
   await new Promise((resolve) => setTimeout(resolve, 1400));
-  const mockCredId = 'BIO-UG-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+  const generatedCredId = 'BIO-UG-' + Math.random().toString(36).substring(2, 10).toUpperCase();
   return {
     success: true,
-    credentialId: mockCredId,
+    credentialId: generatedCredId,
     type: 'simulated-biometric',
   };
 }

@@ -9,7 +9,7 @@ const json = (res: ServerResponse, status: number, body: unknown) => { res.statu
 const body = (req: RequestWithBody) => (req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {});
 const required = (value: unknown, field: string) => { if (typeof value !== 'string' || !value.trim()) throw new Error(`Invalid ${field}`); return value.trim(); };
 const getUser = async (req: IncomingMessage) => auth.api.getSession({ headers: new Headers({ cookie: req.headers.cookie ?? '' }) });
-const isAdmin = (userId: string) => userId === process.env.BOOST_ADMIN_FIREBASE_UID || userId === process.env.SHOPLOCAL_ADMIN_USER_ID;
+const isAdmin = (userId: string) => Boolean(process.env.SHOPLOCAL_ADMIN_USER_ID && userId === process.env.SHOPLOCAL_ADMIN_USER_ID);
 
 export default async function handler(req: RequestWithBody, res: ServerResponse) {
   try {

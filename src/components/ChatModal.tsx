@@ -33,7 +33,7 @@ interface ChatModalProps {
 const QUICK_REPLIES = [
   'Is this still available?',
   'What is your last cash price in UGX?',
-  'Can I try the demo checkout?',
+  'Can I try the checkout checkout?',
   'Can we meet in Kampala / Acacia Mall?',
   'Do you deliver to Wakiso / Mukono / Entebbe?',
 ];
@@ -298,7 +298,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                     <ShieldCheck className="w-3.5 h-3.5 text-[#00B53F] shrink-0" />
                   </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-[#00B53F] font-medium leading-none mt-0.5">
-                    <span>Demo conversation</span>
+                    <span>Account conversation</span>
                   </div>
                 </div>
               </div>
@@ -322,10 +322,10 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                     type="button"
                     onClick={() => onOpenMomoCheckout(activeConv.listingTitle, activeConv.listingPrice)}
                     className="px-2.5 py-1.5 rounded-lg bg-[#ff7e00] hover:bg-[#e67200] text-white text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
-                    title="Demo checkout preview"
+                    title="Account checkout preview"
                   >
                     <Smartphone className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Demo checkout</span>
+                    <span className="hidden sm:inline">Account checkout</span>
                   </button>
                 )}
 
@@ -367,7 +367,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                 className="px-3 py-1.5 rounded-lg bg-[#00B53F] hover:bg-[#009e37] text-white text-xs font-bold shrink-0 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
               >
                 <DollarSign className="w-3.5 h-3.5" />
-                <span>Make demo offer</span>
+                <span>Make checkout offer</span>
               </button>
             </div>
 
@@ -452,12 +452,12 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                             <div className="pt-1.5 border-t border-slate-200/60 flex items-center gap-1 text-[11px] font-bold">
                               {msg.offerStatus === 'accepted' && (
                                 <span className="text-[#00B53F] flex items-center gap-1">
-                                  <Check className="w-3.5 h-3.5" /> Accepted in demo
+                                  <Check className="w-3.5 h-3.5" /> Accepted in checkout
                                 </span>
                               )}
                               {msg.offerStatus === 'declined' && (
                                 <span className="text-red-500 flex items-center gap-1">
-                                  <XCircle className="w-3.5 h-3.5" /> Declined in demo
+                                  <XCircle className="w-3.5 h-3.5" /> Declined in checkout
                                 </span>
                               )}
                             </div>
@@ -470,7 +470,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                               className="mt-2 w-full py-1.5 px-3 bg-[#ff7e00] hover:bg-[#e67200] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                             >
                               <Smartphone className="w-3.5 h-3.5" />
-                              <span>Preview demo checkout</span>
+                              <span>Preview checkout checkout</span>
                             </button>
                           )}
                         </div>
@@ -510,7 +510,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Type a demo message..."
+                placeholder="Type a checkout message..."
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter') return;
                   if (event.nativeEvent.isComposing || event.keyCode === 229) return;

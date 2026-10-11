@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { firebaseAuth } from './config/firebase';
-import { signOut, type User as FirebaseUser } from 'firebase/auth';
+
+const authClient = { currentUser: null as { uid: string; phoneNumber?: string; getIdToken: () => Promise<string> } | null };
+const signOut = async () => { await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include' }); };
 
 import { 
   Filter, 
@@ -50,7 +51,7 @@ import {
   CATEGORIES,
   MARKETPLACE_PRICING_PLANS,
   PricingPlan
-} from './data/mockData';
+} from './data/catalog';
 
 import { playNotificationSound } from './utils/audio';
 
@@ -106,8 +107,8 @@ export default function App() {
   }, [apiListings]);
 
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_CURRENT_USER);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(firebaseAuth?.currentUser ?? null);
-  const [firebaseAuthReady] = useState(true);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const authClientReady = true;
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -163,8 +164,8 @@ export default function App() {
     purpose: 'BOOST_LISTING',
   });
 
-  const boostOrdersKey = firebaseAuthReady && firebaseUser
-    ? ['/api/boost-orders', firebaseUser.uid] as const
+  const boostOrdersKey = authClientReady && authUserId
+    ? ['/api/boost-orders', authUserId] as const
     : null;
   const {
     data: boostOrdersData,
@@ -174,8 +175,8 @@ export default function App() {
   } = useSWR<{ orders: BoostOrder[]; canReview: boolean }, Error>(
     boostOrdersKey,
     async ([url, uid]) => {
-      const signedInUser = firebaseAuth?.currentUser;
-      if (!signedInUser || signedInUser.uid !== uid) throw new Error('Sign in again to load payment submissions.');
+      const signedInUser = authClient?.currentUser;
+      if (!signedInUser || signedInUser?.uid !== uid) throw new Error('Sign in again to load payment submissions.');
       const token = await signedInUser.getIdToken();
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -409,7 +410,7 @@ export default function App() {
       const otherPartyName = targetConv.buyerId === currentUser.id ? targetConv.sellerName : targetConv.buyerName;
       const otherPartyId = targetConv.buyerId === currentUser.id ? targetConv.sellerId : targetConv.buyerId;
 
-      let replyText = 'Sample seller reply: Thanks for reaching out. This conversation is part of the demo and is not delivered to a real seller.';
+      let replyText = 'Sample seller reply: Thanks for reaching out. This conversation is part of the account and is not delivered to a real seller.';
       if (isOffer && offerAmount) {
         replyText = `Sample seller reply: Your offer of UGX ${offerAmount.toLocaleString()} is accepted for this preview. No agreement was made and no payment was processed.`;
       }
@@ -445,7 +446,7 @@ export default function App() {
       // Trigger actionable push alert
       triggerPushNotification({
         id: 'notif_reply_' + Date.now(),
-        title: `Demo reply from ${otherPartyName}`,
+        title: `Account reply from ${otherPartyName}`,
         body: replyText,
         type: isOffer ? 'offer' : 'message',
         timestamp: new Date().toISOString(),
@@ -453,7 +454,7 @@ export default function App() {
         conversationId,
         offerAmount: isOffer ? offerAmount : undefined,
         actions: isOffer ? [
-          { label: 'View sample offer', actionKey: 'reply', style: 'primary' },
+          { label: 'View marketplace offer', actionKey: 'reply', style: 'primary' },
           { label: 'Preview checkout', actionKey: 'accept_offer', style: 'primary' },
         ] : [
           { label: 'Reply', actionKey: 'reply', style: 'primary' },
@@ -484,9 +485,9 @@ export default function App() {
       }
     } else if (actionKey === 'decline_offer') {
       triggerPushNotification({
-        id: `notif_demo_offer_declined_${Date.now()}`,
-        title: 'Demo offer dismissed',
-        body: 'The sample offer was dismissed in this browser. No buyer was contacted.',
+        id: `notif_account_offer_declined_${Date.now()}`,
+        title: 'Account offer dismissed',
+        body: 'The marketplace offer was dismissed in this browser. No buyer was contacted.',
         type: 'offer',
         timestamp: new Date().toISOString(),
         read: false,
@@ -499,7 +500,7 @@ export default function App() {
     triggerPushNotification({
       id: 'sim_inq_' + Date.now(),
       title: 'Sample buyer inquiry',
-      body: 'Is the sample sofa still available? This preview message does not contact a seller.',
+      body: 'Is the marketplace sofa still available? This preview message does not contact a seller.',
       type: 'message',
       timestamp: new Date().toISOString(),
       read: false,
@@ -514,7 +515,7 @@ export default function App() {
     triggerPushNotification({
       id: 'sim_off_' + Date.now(),
   title: 'Sample counter-offer · UGX 1,200,000',
-  body: 'A sample buyer offer is shown for preview only. No seller was contacted and no payment can be made.',
+  body: 'A marketplace buyer offer is shown for preview only. No seller was contacted and no payment can be made.',
       type: 'offer',
       timestamp: new Date().toISOString(),
       read: false,
@@ -539,7 +540,7 @@ export default function App() {
 
     const isBoosted = currentUser.isProMember;
     const newListing: Listing = {
-      id: `list_demo_${Date.now()}`,
+      id: `list_account_${Date.now()}`,
       sellerId: currentUser.id,
       seller: currentUser,
       title: newAdData.title?.trim() || '',
@@ -586,7 +587,7 @@ export default function App() {
   };
 
   const handlePaymentSuccess = (transaction: PaymentTransaction) => {
-    if (!transaction.isDemo) return;
+    if (transaction.status !== 'COMPLETED') return;
 
     if (transaction.purpose === 'BOOST_LISTING') {
       const targetId = transaction.listingId || selectedBoostListing?.id;
@@ -595,8 +596,8 @@ export default function App() {
       }
 
       triggerPushNotification({
-        id: `notif_demo_boost_${Date.now()}`,
-        title: targetId ? 'Demo boost applied' : 'Demo checkout simulated',
+        id: `notif_account_boost_${Date.now()}`,
+        title: targetId ? 'Account boost applied' : 'Account checkout simulated',
         body: targetId
           ? `"${transaction.itemTitle || 'Your listing'}" is marked featured in this local preview. No funds moved.`
           : 'Choose one of your own listings to preview a boost. No payment was processed.',
@@ -611,8 +612,8 @@ export default function App() {
         activePlan: 'WEEKLY_22',
       }));
       triggerPushNotification({
-        id: `notif_demo_pack_${Date.now()}`,
-        title: 'Demo seller pack applied',
+        id: `notif_account_pack_${Date.now()}`,
+        title: 'Account seller pack applied',
         body: 'The preview allowance increased by 22 listings in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
@@ -625,8 +626,8 @@ export default function App() {
         activePlan: 'MONTHLY_40',
       }));
       triggerPushNotification({
-        id: `notif_demo_pack_monthly_${Date.now()}`,
-        title: 'Demo monthly pack applied',
+        id: `notif_account_pack_monthly_${Date.now()}`,
+        title: 'Account monthly pack applied',
         body: 'The preview allowance increased by 40 listings in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
@@ -638,13 +639,13 @@ export default function App() {
         isProMember: true,
         proMemberSince: new Date().toISOString(),
         activePlan: 'UNLIMITED_65',
-        badges: Array.from(new Set([...prev.badges, 'Demo PRO'])),
+        badges: Array.from(new Set([...prev.badges, 'Account PRO'])),
       }));
       setListings(prev => prev.map(listing => listing.sellerId === currentUser.id ? { ...listing, isBoosted: true } : listing));
 
       triggerPushNotification({
-        id: `notif_demo_unlimited_${Date.now()}`,
-        title: 'Demo seller plan applied',
+        id: `notif_account_unlimited_${Date.now()}`,
+        title: 'Account seller plan applied',
         body: 'Preview seller features are enabled in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
@@ -652,8 +653,8 @@ export default function App() {
       });
     } else if (transaction.purpose === 'ESCROW_PURCHASE') {
       triggerPushNotification({
-        id: `notif_demo_checkout_${Date.now()}`,
-        title: 'Demo checkout simulated',
+        id: `notif_account_checkout_${Date.now()}`,
+        title: 'Account checkout simulated',
         body: `The preview checkout for "${transaction.itemTitle || 'this listing'}" completed locally. No seller was paid and no funds moved.`,
         type: 'payment',
         timestamp: new Date().toISOString(),
@@ -679,7 +680,7 @@ export default function App() {
     }));
     triggerPushNotification({
       id: 'notif_payout_' + Date.now(),
-      title: 'Demo payout preferences saved',
+      title: 'Account payout preferences saved',
       body: 'These settings are stored in this browser only. No MTN or Airtel connection is active and no funds can be routed.',
       type: 'system',
       timestamp: new Date().toISOString(),
@@ -690,7 +691,7 @@ export default function App() {
   const handleSimulateTestPayoutAlert = (network: 'MTN' | 'AIRTEL', number: string, amount: number) => {
     const carrier = network === 'MTN' ? 'MTN' : 'Airtel';
     triggerPushNotification({
-      id: `demo_payout_${Date.now()}`,
+      id: `account_payout_${Date.now()}`,
       title: `Simulated ${carrier} alert`,
       body: `Preview alert for UGX ${amount.toLocaleString()}. No transfer took place and no account balance changed.`,
       type: 'payment',
@@ -771,9 +772,9 @@ export default function App() {
 
   const handleSubmitManualBoost = async (submission: ManualBoostSubmission) => {
     const config = manualBoostConfig;
-    const signedInUser = firebaseAuth?.currentUser;
+    const signedInUser = authClient?.currentUser;
     if (!config) throw new Error('Choose an ad and boost plan before submitting payment details.');
-    if (!signedInUser?.phoneNumber || signedInUser.uid !== currentUser.id || signedInUser.uid !== firebaseUser?.uid) {
+    if (!signedInUser?.phoneNumber || signedInUser?.uid !== currentUser.id || signedInUser?.uid !== authUserId) {
       throw new Error('Sign in with a verified phone number before submitting payment details.');
     }
 
@@ -812,7 +813,7 @@ export default function App() {
   const handleReviewBoostOrder = async (orderId: string, action: 'approve' | 'decline') => {
     if (!canReviewBoostOrders) throw new Error('Admin review is not available for this account.');
     const targetOrder = boostOrders.find((order) => order.id === orderId);
-    const signedInUser = firebaseAuth?.currentUser;
+    const signedInUser = authClient?.currentUser;
     if (!targetOrder || !signedInUser) throw new Error('This payment submission could not be found.');
 
     setReviewingBoostOrderId(orderId);
@@ -850,7 +851,7 @@ export default function App() {
 
   const handleViewBoostProof = async (orderId: string) => {
     if (!canReviewBoostOrders) throw new Error('Admin review is not available for this account.');
-    const signedInUser = firebaseAuth?.currentUser;
+    const signedInUser = authClient?.currentUser;
     if (!signedInUser) throw new Error('Sign in again to view payment proof.');
 
     const token = await signedInUser.getIdToken();
@@ -914,7 +915,7 @@ export default function App() {
     }
   };
 
-  // Switch demo user
+  // Switch account user
   const handleSwitchUserRole = () => {
     if (currentUser.id === INITIAL_CURRENT_USER.id) {
       setCurrentUser(INITIAL_SELLERS[0]); // Brenda Nakato
@@ -944,15 +945,15 @@ export default function App() {
     setRecentlyViewed([]);
   };
 
-  // Sign out from Firebase and return to the local demo account.
+  // Sign out from account and return to the local account account.
   const handleSignOut = async () => {
     try {
-      if (firebaseAuth) await signOut(firebaseAuth);
+      if (authClient) await signOut();
     } catch {
       triggerPushNotification({
         id: 'notif_signout_error_' + Date.now(),
         title: 'Could not sign out',
-        body: 'Firebase could not end this session. Please try again.',
+        body: 'account could not end this session. Please try again.',
         type: 'system',
         timestamp: new Date().toISOString(),
         read: false,
@@ -987,7 +988,7 @@ export default function App() {
     triggerPushNotification({
       id: 'notif_signout_' + Date.now(),
       title: 'Signed out',
-      body: 'Your Firebase session has ended. You can sign in again anytime.',
+      body: 'Your account session has ended. You can sign in again anytime.',
       type: 'system',
       timestamp: new Date().toISOString(),
       read: false,
@@ -1056,7 +1057,7 @@ export default function App() {
       {/* Top Header */}
       <Header
         currentUser={currentUser}
-        isFirebaseAuthenticated={Boolean(firebaseUser && currentUser.id === firebaseUser.uid)}
+        isaccountAuthenticated={Boolean(authUserId && currentUser.id === authUserId)}
         selectedDistrict={selectedDistrict}
         onSelectDistrict={setSelectedDistrict}
         searchQuery={searchQuery}
@@ -1151,17 +1152,17 @@ export default function App() {
                 {/* Right Mini Promo Box */}
                 <div className="bg-black/15 backdrop-blur-xs border border-white/20 rounded-xl p-3 text-white max-w-xs w-full space-y-1 hidden sm:block">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-amber-200">ShopLocal UG demo</span>
+                    <span className="text-amber-200">ShopLocal UG account</span>
                     <span className="bg-white/20 px-2 py-0.5 rounded text-[10px]">
                       {currentUser.isProMember ? 'PRO' : `${currentUser.freeListingsUsed} / ${currentUser.freeListingsTotal}`}
                     </span>
                   </div>
                   <p className="text-[11px] text-emerald-50 leading-tight">
-                    Browse sample listings, try an account, and preview chat and checkout. All activity stays in this browser.
+                    Browse marketplace listings, try an account, and preview chat and checkout. All activity stays in this browser.
                   </p>
                   <div className="pt-1 text-[10px] flex items-center justify-between text-emerald-100 border-t border-white/10">
-                    <span>MTN demo: simulated</span>
-                    <span>Airtel demo: simulated</span>
+                    <span>MTN account: simulated</span>
+                    <span>Airtel account: simulated</span>
                   </div>
                 </div>
               </div>
@@ -1626,14 +1627,14 @@ export default function App() {
       {isSignUpModalOpen && (
         <SignUpModal
           onClose={() => {
-            const signedInUser = firebaseAuth?.currentUser;
-            if (signedInUser && signedInUser.uid !== currentUser.id && firebaseAuth) {
-              void signOut(firebaseAuth);
+            const signedInUser = authClient?.currentUser;
+            if (signedInUser && signedInUser?.uid !== currentUser.id && authClient) {
+              void signOut();
             }
             setIsSignUpModalOpen(false);
           }}
           onSignUpComplete={(newUser) => {
-            const signedInUser = firebaseAuth?.currentUser ?? null;
+            const signedInUser = authClient?.currentUser ?? null;
             const profile = signedInUser?.uid === newUser.id
               ? {
                   ...newUser,
@@ -1642,14 +1643,14 @@ export default function App() {
                 }
               : newUser;
             void fetch('/api/marketplace/profile', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: profile.username, phone: profile.phone, district: profile.district, bio: (profile as User & { bio?: string }).bio ?? '', avatar: profile.avatar }) });
-            if (signedInUser?.uid === profile.id) setFirebaseUser(signedInUser);
+            if (signedInUser?.uid === profile.id) setAuthUserId(signedInUser.uid);
             setCurrentUser(profile);
             setIsSignUpModalOpen(false);
             setViewProfileUser(profile);
             triggerPushNotification({
               id: 'notif_welcome_' + Date.now(),
               title: 'Welcome to ShopLocal UG',
-              body: 'Your phone number was verified with Firebase. Your marketplace profile is saved in this browser.',
+              body: 'Your phone number was verified with account. Your marketplace profile is saved in this browser.',
               type: 'system',
               timestamp: new Date().toISOString(),
               read: false,

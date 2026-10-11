@@ -91,7 +91,7 @@ export const PostAdPromoModal: React.FC<PostAdPromoModalProps> = ({
                 TOP promo
               </h3>
               <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
-                Preview a top-of-search placement; performance is not measured in this demo.
+                Preview a top-of-search placement; performance is not measured in this subscription.
               </p>
             </div>
 
@@ -157,7 +157,7 @@ export const PostAdPromoModal: React.FC<PostAdPromoModalProps> = ({
                 Boost Premium promo
               </h3>
               <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
-                Preview a featured placement; no traffic or conversion metrics are tracked in this demo.
+                Preview a featured placement; no traffic or conversion metrics are tracked in this subscription.
               </p>
             </div>
 

@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import { Listing, User, UserPurchase } from '../types';
 import { formatUGX } from '../utils/helpers';
-import { INITIAL_USER_PURCHASES } from '../data/mockData';
 import { isOwnerUser } from '../config/paymentConfig';
 
 interface SellerDashboardProps {
@@ -79,18 +78,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Main 3 navigation tabs: Ads | Profile | Settings (Purchases moved to bottom of Profile like Jiji)
   const [mainTab, setMainTab] = useState<'ads' | 'profile' | 'settings'>('ads');
   const [inventorySubTab, setInventorySubTab] = useState<'active' | 'sold'>('active');
-  const [purchases] = useState<UserPurchase[]>(() => {
-    try {
-      const saved = localStorage.getItem('shoplocal_user_purchases');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= 3) return parsed;
-      }
-    } catch {
-      // fallback
-    }
-    return INITIAL_USER_PURCHASES;
-  });
+  const [purchases] = useState<UserPurchase[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -139,7 +127,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Business profile name - only visible to the owner
   const isOwner = isOwnerUser(currentUser);
   const profileName = isOwner 
-    ? (currentUser.businessName || "Demo Local Shop")
+    ? (currentUser.businessName || "Account Local Shop")
     : (currentUser.businessName || currentUser.name);
 
   return (
@@ -266,7 +254,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                 <p className="text-[11px] text-slate-500">
                   {currentUser.isProMember 
-                    ? 'Demo PRO is enabled in this browser; no payment was processed.'
+                    ? 'Account PRO is enabled in this browser; no payment was processed.'
                     : `You have ${Math.max(0, freeListingsTotal - currentUser.freeListingsUsed)} free listings remaining in your seller allowance.`}
                 </p>
 
@@ -489,7 +477,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               {/* 5. FIX USER PROFILE CARD:
                   - Header: White
                   - Logo centered 80px circle with green border
-                  - Demo Local Shop profile title and sample badge
+                  - Account Local Shop profile title and sample badge
                   - Contact: phone + email in one line grey 12px, center
                   - "Upload Photo" button white with green border, not grey
                   - Account Credentials: label grey left, value black right bold
@@ -521,7 +509,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </button>
                 </div>
 
-                {/* Demo Local Shop profile title and sample badge */}
+                {/* Account Local Shop profile title and sample badge */}
                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
                   <h3 className="font-display font-bold text-[18px] text-[#222222]">
                     {profileName}
@@ -586,12 +574,12 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                   <div className="flex justify-between items-center py-1 border-b border-[#EEEEEE] text-xs">
   <span className="text-[#757575] font-medium">Identity checks</span>
-                    <span className="text-slate-500 font-bold">Not connected in demo</span>
+                    <span className="text-slate-500 font-bold">Not connected in account</span>
                   </div>
 
                   <div className="flex justify-between items-center py-1 text-xs">
                     <span className="text-[#757575] font-medium">Account Status</span>
-                    <span className="text-slate-500 font-bold">Demo profile</span>
+                    <span className="text-slate-500 font-bold">Account profile</span>
                   </div>
                 </div>
 
@@ -663,7 +651,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                         <ShieldCheck className="w-4 h-4 text-[#00B53F]" />
                       </div>
 <span className="text-[11px] font-bold text-[#222222]">Identity check</span>
-  <span className="text-[9px] text-slate-500 font-bold">Demo only</span>
+  <span className="text-[9px] text-slate-500 font-bold">Account only</span>
                     </div>
 
                     {/* 6. PRO Badge */}

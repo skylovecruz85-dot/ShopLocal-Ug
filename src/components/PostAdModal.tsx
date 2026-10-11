@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { CategoryId, ItemCondition, Listing, UgandaDistrict, User } from '../types';
-import { CATEGORIES, UGANDA_DISTRICTS } from '../data/mockData';
+import { CATEGORIES, UGANDA_DISTRICTS } from '../data/catalog';
 
 interface PostAdModalProps {
   currentUser: User;

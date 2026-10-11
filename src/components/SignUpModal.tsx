@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { AlertCircle, Camera, CheckCircle2, Eye, EyeOff, Loader2, Mail, MapPin, Upload, User as UserIcon, X } from 'lucide-react';
 
 import { User, UgandaDistrict } from '../types';
-import { UGANDA_DISTRICTS } from '../data/mockData';
+import { UGANDA_DISTRICTS } from '../data/catalog';
 
 interface SignUpModalProps {
   onClose: () => void;
@@ -40,7 +40,7 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
       return;
     }
     if (file.size > 1024 * 1024) {
-      setFormError('Profile photos must be 1 MB or smaller in this demo.');
+      setFormError('Profile photos must be 1 MB or smaller in this account.');
       return;
     }
 

@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { auth } from './auth';
-import { db, listings, profiles } from './db';
+import { db, favorites, listings, profiles } from './db';
 
 type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
@@ -33,6 +33,21 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       const [profile] = await db.insert(profiles).values({ id: randomUUID(), userId: session.user.id, username, phone: typeof input.phone === 'string' ? input.phone.trim() : null, district: typeof input.district === 'string' ? input.district.trim() : null, bio: typeof input.bio === 'string' ? input.bio.trim() : null, avatar: typeof input.avatar === 'string' ? input.avatar : null }).onConflictDoUpdate({ target: profiles.userId, set: { username, phone: typeof input.phone === 'string' ? input.phone.trim() : null, district: typeof input.district === 'string' ? input.district.trim() : null, bio: typeof input.bio === 'string' ? input.bio.trim() : null, avatar: typeof input.avatar === 'string' ? input.avatar : null, updatedAt: new Date() } }).returning();
       return json(res, 200, { data: profile });
     }
+    if (url.pathname === '/api/marketplace/favorites' && req.method === 'GET') {
+      const rows = await db.select().from(favorites).where(eq(favorites.userId, session.user.id));
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/favorites' && req.method === 'POST') {
+      const input = body(req);
+      const listingId = required(input.listingId, 'listingId');
+      const [favorite] = await db.insert(favorites).values({ userId: session.user.id, listingId }).returning();
+      return json(res, 201, { data: favorite });
+    }
+    if (url.pathname === '/api/marketplace/favorites' && req.method === 'DELETE') {
+      const listingId = required(url.searchParams.get('listingId'), 'listingId');
+      await db.delete(favorites).where(and(eq(favorites.userId, session.user.id), eq(favorites.listingId, listingId)));
+      return json(res, 204, null);
+    }
     if (req.method === 'POST' && url.pathname === '/api/marketplace/listings') {
       const input = body(req);
       const title = required(input.title, 'title'); const description = required(input.description, 'description'); const category = required(input.category, 'category'); const district = required(input.district, 'district');
@@ -43,6 +58,8 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
     return json(res, 404, { error: 'Not found.' });
   } catch (error) {
     console.error('[marketplace-api]', error);
-    return json(res, 500, { error: error instanceof Error ? error.message : 'Request failed.' });
+    const message = error instanceof Error ? error.message : 'Request failed.';
+    const status = /invalid|required|price|username/i.test(message) ? 400 : 500;
+    return json(res, status, { error: status === 400 ? message : 'Request failed.' });
   }
 }

@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { AlertCircle, Camera, CheckCircle2, Eye, EyeOff, Loader2, Mail, MapPin, Upload, User as UserIcon, X } from 'lucide-react';
 
 import { browserLocalPersistence, setPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, type User as FirebaseUser } from 'firebase/auth';
-import { firebaseAuth, firebaseConfigured, firebaseProfileStorageKey } from '../config/firebase';
+import { firebaseAuth, firebaseConfigured } from '../config/firebase';
 import { User, UgandaDistrict } from '../types';
 import { UGANDA_DISTRICTS } from '../data/mockData';
 
@@ -22,17 +22,6 @@ const formatUgandanPhoneNumber = (value: string) => {
       ? digits.slice(1)
       : digits;
   return /^7\d{8}$/.test(nationalNumber) ? `+256${nationalNumber}` : null;
-};
-
-const readLocalProfile = (uid: string): User | null => {
-  try {
-    const saved = localStorage.getItem(firebaseProfileStorageKey(uid));
-    if (!saved) return null;
-    const profile = JSON.parse(saved) as User;
-    return profile.id === uid ? profile : null;
-  } catch {
-    return null;
-  }
 };
 
 const getFirebaseErrorMessage = (error: unknown) => {
@@ -124,11 +113,6 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
       const credential = isCreateAccount
         ? await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password)
         : await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
-      const savedProfile = readLocalProfile(credential.user.uid);
-      if (savedProfile) {
-        onSignUpComplete({ ...savedProfile, id: credential.user.uid, email: credential.user.email ?? email.trim() });
-        return;
-      }
       setVerifiedFirebaseUser(credential.user);
       setStep('profile');
     } catch (error) {

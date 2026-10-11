@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { onAuthStateChanged, signOut, type User as FirebaseUser } from 'firebase/auth';
-import { firebaseAuth, firebaseProfileStorageKey } from './config/firebase';
+import { firebaseAuth } from './config/firebase';
 import { 
   Filter, 
   MapPin, 
@@ -79,68 +79,40 @@ import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { RecentlyViewed } from './components/RecentlyViewed';
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('shoplocal_theme') === 'dark';
-  });
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     document.body.style.colorScheme = darkMode ? 'dark' : 'light';
-    localStorage.setItem('shoplocal_theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
-  // Persistence states with safe fallback to initial mock data if empty
-  const [listings, setListings] = useState<Listing[]>(() => {
-    const saved = localStorage.getItem('shoplocal_listings');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {
-        // Fallback to initial
-      }
-    }
-    return INITIAL_LISTINGS;
-  });
+  const [listings, setListings] = useState<Listing[]>([]);
+  const { data: apiListings } = useSWR<Listing[]>('/api/marketplace/listings?limit=100', async (url) => {
+    const response = await fetch(url, { credentials: 'include' });
+    if (!response.ok) throw new Error('Listings could not be loaded.');
+    const payload = await response.json() as { data?: Array<Partial<Listing> & { id: string; title: string; price: number; district: string; category: CategoryId; description: string; sellerId?: string; userId?: string }> };
+    return (payload.data ?? []).map((item) => ({
+      ...item,
+      tags: item.tags ?? [],
+      locationDetails: item.locationDetails ?? item.district,
+      subcategory: item.subcategory ?? '',
+      seller: item.seller ?? { id: item.sellerId ?? item.userId ?? '', name: 'ShopLocal seller', username: 'seller', phone: '', email: '', avatar: '', district: item.district, rating: 0, reviewCount: 0, isVerified: false, verificationStatus: 'UNVERIFIED', isPhoneVerified: false, isProMember: false, freeListingsUsed: 0, freeListingsTotal: 18, hasBiometrics: false, joinedDate: item.createdAt ?? new Date().toISOString(), responseTime: 'New seller', badges: [], activePlan: 'FREE_18', completedSales: [] },
+    })) as Listing[];
+  }, { revalidateOnFocus: false });
+
+  useEffect(() => {
+    if (apiListings) setListings(apiListings);
+  }, [apiListings]);
 
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_CURRENT_USER);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [firebaseAuthReady, setFirebaseAuthReady] = useState(!firebaseAuth);
 
-  const [conversations, setConversations] = useState<Conversation[]>(() => {
-    const saved = localStorage.getItem('shoplocal_conversations');
-    return saved ? JSON.parse(saved) : INITIAL_CONVERSATIONS;
-  });
-
-  const [reviews, setReviews] = useState<Review[]>(() => {
-    const saved = localStorage.getItem('shoplocal_reviews');
-    return saved ? JSON.parse(saved) : INITIAL_REVIEWS;
-  });
-
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    const saved = localStorage.getItem('shoplocal_favorites');
-    return saved ? JSON.parse(saved) : ['list_001', 'list_003'];
-  });
-
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem('shoplocal_notifications');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: 'notif_welcome',
-        title: 'Welcome to ShopLocal UG',
-        body: 'Browse local ads, manage your seller workspace, and submit paid boost proofs for private admin review.',
-        type: 'system',
-        timestamp: new Date().toISOString(),
-        read: false,
-      }
-    ];
-  });
-
-  const [recentlyViewed, setRecentlyViewed] = useState<Listing[]>(() => {
-    const saved = localStorage.getItem('shoplocal_recently_viewed');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Listing[]>([]);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -230,64 +202,21 @@ export default function App() {
         setManualBoostConfig(null);
       }
       if (user) {
-        let savedProfile: User | null = null;
-        try {
-          const saved = localStorage.getItem(firebaseProfileStorageKey(user.uid));
-          if (saved) {
-            const parsed = JSON.parse(saved) as User;
-            if (parsed.id === user.uid) savedProfile = parsed;
-          }
-        } catch {}
-
-        if (savedProfile) {
-          setCurrentUser({
-            ...savedProfile,
-            id: user.uid,
-            phone: user.phoneNumber ?? savedProfile.phone,
-            email: user.email ?? savedProfile.email,
-            isPhoneVerified: Boolean(user.phoneNumber),
-            isVerified: false,
-            verificationStatus: 'UNVERIFIED',
-            ninNumber: undefined,
-            badges: Array.from(new Set([
-              ...(savedProfile.badges ?? []).filter((badge) => !/nin|identity verified|phone verified/i.test(badge)),
-              ...(user.phoneNumber ? ['Phone verified'] : []),
-            ])),
-          });
-          setIsSignUpModalOpen(false);
-        } else {
-          setIsSignUpModalOpen(true);
-        }
+        void fetch('/api/marketplace/profile', { credentials: 'include' })
+          .then((response) => response.ok ? response.json() : null)
+          .then((payload: { data?: User } | null) => {
+            if (payload?.data) {
+              setCurrentUser(payload.data);
+              setIsSignUpModalOpen(false);
+            } else {
+              setIsSignUpModalOpen(true);
+            }
+          })
+          .catch(() => setIsSignUpModalOpen(true));
       }
       setFirebaseAuthReady(true);
     });
   }, []);
-
-  // Local storage synchronization
-  useEffect(() => {
-    localStorage.setItem('shoplocal_listings', JSON.stringify(listings));
-  }, [listings]);
-
-  useEffect(() => {
-    if (!firebaseAuthReady || !firebaseUser || currentUser.id !== firebaseUser.uid) return;
-    localStorage.setItem(firebaseProfileStorageKey(firebaseUser.uid), JSON.stringify(currentUser));
-  }, [currentUser, firebaseAuthReady, firebaseUser]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_conversations', JSON.stringify(conversations));
-  }, [conversations]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_reviews', JSON.stringify(reviews));
-  }, [reviews]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_favorites', JSON.stringify(favorites));
-  }, [favorites]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_notifications', JSON.stringify(notifications));
-  }, [notifications]);
 
   // Counts
   const unreadMessagesCount = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
@@ -1020,15 +949,13 @@ export default function App() {
     setRecentlyViewed(prev => {
       const filtered = prev.filter(item => item.id !== listing.id);
       const updated = [listing, ...filtered].slice(0, 5);
-      localStorage.setItem('shoplocal_recently_viewed', JSON.stringify(updated));
-      return updated;
+    return updated;
     });
   };
 
   // Clear recently viewed history
   const handleClearRecentlyViewed = () => {
     setRecentlyViewed([]);
-    localStorage.removeItem('shoplocal_recently_viewed');
   };
 
   // Sign out from Firebase and return to the local demo account.
@@ -1728,7 +1655,7 @@ export default function App() {
                   isPhoneVerified: Boolean(signedInUser.phoneNumber),
                 }
               : newUser;
-            localStorage.setItem(firebaseProfileStorageKey(profile.id), JSON.stringify(profile));
+            void fetch('/api/marketplace/profile', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: profile.username, phone: profile.phone, district: profile.district, bio: (profile as User & { bio?: string }).bio ?? '', avatar: profile.avatar }) });
             if (signedInUser?.uid === profile.id) setFirebaseUser(signedInUser);
             setCurrentUser(profile);
             setIsSignUpModalOpen(false);

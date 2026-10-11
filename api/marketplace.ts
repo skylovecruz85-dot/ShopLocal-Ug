@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { auth } from './auth';
-import { conversations, db, favorites, listings, messages, moderationReports, profiles } from './db';
+import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, profiles } from './db';
 
 type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
@@ -68,6 +68,18 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       const listingId = required(url.searchParams.get('listingId'), 'listingId');
       await db.delete(favorites).where(and(eq(favorites.userId, session.user.id), eq(favorites.listingId, listingId)));
       return json(res, 204, null);
+    }
+    if (url.pathname === '/api/marketplace/boost-orders' && req.method === 'GET') {
+      const rows = await db.select().from(boostOrders).where(eq(boostOrders.userId, session.user.id)).orderBy(desc(boostOrders.createdAt));
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/boost-orders' && req.method === 'POST') {
+      const input = body(req);
+      const plan = required(input.plan, 'plan');
+      const amount = Number(input.amount);
+      if (!Number.isInteger(amount) || amount <= 0) return json(res, 400, { error: 'Amount must be a positive whole number.' });
+      const [order] = await db.insert(boostOrders).values({ id: randomUUID(), userId: session.user.id, listingId: typeof input.listingId === 'string' ? input.listingId : null, plan: plan.slice(0, 80), amount, paymentReference: typeof input.paymentReference === 'string' ? input.paymentReference.trim().slice(0, 160) : null, proofUrl: typeof input.proofUrl === 'string' ? input.proofUrl.trim().slice(0, 1000) : null }).returning();
+      return json(res, 201, { data: order });
     }
     if (url.pathname === '/api/marketplace/reports' && req.method === 'POST') {
       const input = body(req);

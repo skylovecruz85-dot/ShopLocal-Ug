@@ -15,7 +15,8 @@ export const listings = pgTable('listings', { id: text('id').primaryKey(), userI
 export const favorites = pgTable('favorites', { userId: text('userId').notNull(), listingId: text('listingId').notNull(), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow() });
 export const conversations = pgTable('conversations', { id: text('id').primaryKey(), userAId: text('userAId').notNull(), userBId: text('userBId').notNull(), listingId: text('listingId'), lastMessageAt: timestamp('lastMessageAt', { withTimezone: true }), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow() });
 export const messages = pgTable('messages', { id: text('id').primaryKey(), conversationId: text('conversationId').notNull(), senderId: text('senderId').notNull(), body: text('body').notNull(), readAt: timestamp('readAt', { withTimezone: true }), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow() });
+export const moderationReports = pgTable('moderation_reports', { id: text('id').primaryKey(), reporterId: text('reporterId').notNull(), listingId: text('listingId').notNull(), reason: text('reason').notNull(), details: text('details'), status: text('status').notNull().default('open'), reviewedBy: text('reviewedBy'), reviewedAt: timestamp('reviewedAt', { withTimezone: true }), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow() });
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema: { user, session, account, verification, profiles, listings, favorites, conversations, messages } });
+export const db = drizzle(pool, { schema: { user, session, account, verification, profiles, listings, favorites, conversations, messages, moderationReports } });
 export type Database = typeof db;

@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { auth } from './auth';
-import { conversations, db, favorites, listings, messages, profiles } from './db';
+import { conversations, db, favorites, listings, messages, moderationReports, profiles } from './db';
 
 type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
@@ -68,6 +68,13 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       const listingId = required(url.searchParams.get('listingId'), 'listingId');
       await db.delete(favorites).where(and(eq(favorites.userId, session.user.id), eq(favorites.listingId, listingId)));
       return json(res, 204, null);
+    }
+    if (url.pathname === '/api/marketplace/reports' && req.method === 'POST') {
+      const input = body(req);
+      const listingId = required(input.listingId, 'listingId');
+      const reason = required(input.reason, 'reason');
+      const [report] = await db.insert(moderationReports).values({ id: randomUUID(), reporterId: session.user.id, listingId, reason: reason.slice(0, 120), details: typeof input.details === 'string' ? input.details.trim().slice(0, 2000) : null }).returning();
+      return json(res, 201, { data: report });
     }
     if (req.method === 'POST' && url.pathname === '/api/marketplace/listings') {
       const input = body(req);

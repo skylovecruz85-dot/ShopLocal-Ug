@@ -1,0 +1,18 @@
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { pgTable, text, integer, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+
+export const user = pgTable('user', {
+  id: text('id').primaryKey(), name: text('name').notNull(), email: text('email').notNull().unique(),
+  emailVerified: boolean('emailVerified').notNull().default(false), image: text('image'),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
+});
+export const session = pgTable('session', { id: text('id').primaryKey(), expiresAt: timestamp('expiresAt', { withTimezone: true }).notNull(), token: text('token').notNull().unique(), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(), ipAddress: text('ipAddress'), userAgent: text('userAgent'), userId: text('userId').notNull() });
+export const account = pgTable('account', { id: text('id').primaryKey(), accountId: text('accountId').notNull(), providerId: text('providerId').notNull(), userId: text('userId').notNull(), accessToken: text('accessToken'), refreshToken: text('refreshToken'), idToken: text('idToken'), accessTokenExpiresAt: timestamp('accessTokenExpiresAt', { withTimezone: true }), refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt', { withTimezone: true }), scope: text('scope'), password: text('password'), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow() });
+export const verification = pgTable('verification', { id: text('id').primaryKey(), identifier: text('identifier').notNull(), value: text('value').notNull(), expiresAt: timestamp('expiresAt', { withTimezone: true }).notNull(), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow() });
+export const profiles = pgTable('profiles', { id: text('id').primaryKey(), userId: text('userId').notNull().unique(), username: text('username').notNull().unique(), phone: text('phone'), district: text('district'), bio: text('bio'), avatar: text('avatar'), isVerified: boolean('isVerified').notNull().default(false), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow() });
+export const listings = pgTable('listings', { id: text('id').primaryKey(), userId: text('userId').notNull(), title: text('title').notNull(), description: text('description').notNull(), category: text('category').notNull(), price: integer('price').notNull(), currency: text('currency').notNull().default('UGX'), district: text('district').notNull(), images: jsonb('images').$type<string[]>().notNull().default([]), status: text('status').notNull().default('active'), isSold: boolean('isSold').notNull().default(false), expiresAt: timestamp('expiresAt', { withTimezone: true }), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow() }, (table) => ({ searchIndex: index('listings_search_idx').on(table.category, table.district, table.status) }));
+
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle(pool, { schema: { user, session, account, verification, profiles, listings } });
+export type Database = typeof db;

@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { auth } from './auth';
-import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, profiles } from './db';
+import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, notifications, orders, profiles } from './db';
 
 type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
@@ -68,6 +68,32 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       const listingId = required(url.searchParams.get('listingId'), 'listingId');
       await db.delete(favorites).where(and(eq(favorites.userId, session.user.id), eq(favorites.listingId, listingId)));
       return json(res, 204, null);
+    }
+    if (url.pathname === '/api/marketplace/notifications' && req.method === 'GET') {
+      const rows = await db.select().from(notifications).where(eq(notifications.userId, session.user.id)).orderBy(desc(notifications.createdAt)).limit(100);
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/notifications/read' && req.method === 'POST') {
+      const input = body(req);
+      const notificationId = required(input.id, 'id');
+      await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, notificationId), eq(notifications.userId, session.user.id)));
+      return json(res, 204, null);
+    }
+    if (url.pathname === '/api/marketplace/orders' && req.method === 'GET') {
+      const rows = await db.select().from(orders).where(or(eq(orders.buyerId, session.user.id), eq(orders.sellerId, session.user.id))).orderBy(desc(orders.createdAt));
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/orders' && req.method === 'POST') {
+      const input = body(req);
+      const listingId = required(input.listingId, 'listingId');
+      const quantity = Number(input.quantity ?? 1);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) return json(res, 400, { error: 'Quantity must be a whole number from 1 to 100.' });
+      const [listing] = await db.select().from(listings).where(and(eq(listings.id, listingId), eq(listings.status, 'active'))).limit(1);
+      if (!listing) return json(res, 404, { error: 'Listing not found.' });
+      if (listing.userId === session.user.id) return json(res, 400, { error: 'You cannot order your own listing.' });
+      const [order] = await db.insert(orders).values({ id: randomUUID(), buyerId: session.user.id, sellerId: listing.userId, listingId, quantity, amount: listing.price * quantity }).returning();
+      await db.insert(notifications).values({ id: randomUUID(), userId: listing.userId, type: 'order', title: 'New order received', body: `A buyer placed an order for ${listing.title}.`, data: { orderId: order.id, listingId } });
+      return json(res, 201, { data: order });
     }
     if (url.pathname === '/api/marketplace/boost-orders' && req.method === 'GET') {
       const rows = await db.select().from(boostOrders).where(eq(boostOrders.userId, session.user.id)).orderBy(desc(boostOrders.createdAt));

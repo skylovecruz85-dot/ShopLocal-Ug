@@ -9,6 +9,7 @@ const json = (res: ServerResponse, status: number, body: unknown) => { res.statu
 const body = (req: RequestWithBody) => (req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {});
 const required = (value: unknown, field: string) => { if (typeof value !== 'string' || !value.trim()) throw new Error(`Invalid ${field}`); return value.trim(); };
 const getUser = async (req: IncomingMessage) => auth.api.getSession({ headers: new Headers({ cookie: req.headers.cookie ?? '' }) });
+const isAdmin = (userId: string) => userId === process.env.BOOST_ADMIN_FIREBASE_UID || userId === process.env.SHOPLOCAL_ADMIN_USER_ID;
 
 export default async function handler(req: RequestWithBody, res: ServerResponse) {
   try {
@@ -23,6 +24,28 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       return json(res, 200, { data: rows, page, limit });
     }
     if (!session?.user) return json(res, 401, { error: 'Authentication required.' });
+    if (url.pathname === '/api/marketplace/admin/reports' && req.method === 'GET') {
+      if (!isAdmin(session.user.id)) return json(res, 403, { error: 'Admin access required.' });
+      const rows = await db.select().from(moderationReports).orderBy(desc(moderationReports.createdAt)).limit(200);
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/admin/boost-orders' && req.method === 'GET') {
+      if (!isAdmin(session.user.id)) return json(res, 403, { error: 'Admin access required.' });
+      const rows = await db.select().from(boostOrders).orderBy(desc(boostOrders.createdAt)).limit(200);
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/admin/reports/review' && req.method === 'POST') {
+      if (!isAdmin(session.user.id)) return json(res, 403, { error: 'Admin access required.' });
+      const input = body(req); const reportId = required(input.id, 'id'); const status = required(input.status, 'status');
+      const [report] = await db.update(moderationReports).set({ status: status.slice(0, 32), reviewedBy: session.user.id, reviewedAt: new Date() }).where(eq(moderationReports.id, reportId)).returning();
+      return json(res, 200, { data: report });
+    }
+    if (url.pathname === '/api/marketplace/admin/boost-orders/review' && req.method === 'POST') {
+      if (!isAdmin(session.user.id)) return json(res, 403, { error: 'Admin access required.' });
+      const input = body(req); const orderId = required(input.id, 'id'); const status = required(input.status, 'status');
+      const [order] = await db.update(boostOrders).set({ status: status.slice(0, 32), reviewedBy: session.user.id, reviewedAt: new Date(), updatedAt: new Date() }).where(eq(boostOrders.id, orderId)).returning();
+      return json(res, 200, { data: order });
+    }
     if (req.method === 'GET' && url.pathname === '/api/marketplace/profile') {
       const [profile] = await db.select().from(profiles).where(eq(profiles.userId, session.user.id)).limit(1);
       return json(res, 200, { data: profile ?? null });

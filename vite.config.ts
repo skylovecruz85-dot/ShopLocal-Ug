@@ -1,9 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { createBoostOrdersHandler } from './api/boost-orders';
-import marketplaceHandler from './api/marketplace';
-import authHandler from './api/auth/[...all]';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
 function parseJsonBody(request: import('node:http').IncomingMessage): Promise<void> {
@@ -25,9 +22,9 @@ function localBoostOrdersApi(): Plugin {
     name: 'shoplocal-boost-orders-api',
     configureServer(server) {
       const env = loadEnv(server.config.mode, process.cwd(), '');
-      const handler = createBoostOrdersHandler(env);
+      const handler = import('./api/boost-orders').then(({ createBoostOrdersHandler }) => createBoostOrdersHandler(env));
       server.middlewares.use('/api/boost-orders', (request, response, next) => {
-        void handler(request, response).catch(next);
+        void handler.then((handle) => handle(request, response)).catch(next);
       });
     },
   };
@@ -38,11 +35,19 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), localBoostOrdersApi(), {
       name: 'shoplocal-auth-marketplace-api',
       configureServer(server) {
+        const env = loadEnv(server.config.mode, process.cwd(), '');
+        Object.assign(process.env, env);
+        const handlers = Promise.all([import('./api/health'), import('./api/auth/[...all]'), import('./api/marketplace')]);
+        server.middlewares.use('/api/health', (request, response, next) => {
+          void handlers.then(([health]) => health.default(request, response)).catch(next);
+        });
         server.middlewares.use('/api/auth', (request, response, next) => {
-          void authHandler(request, response).catch(next);
+          void handlers.then(([, auth]) => auth.default(request, response)).catch(next);
         });
         server.middlewares.use('/api/marketplace', (request, response, next) => {
-          void parseJsonBody(request).then(() => marketplaceHandler(request, response)).catch(next);
+          const originalUrl = request.url ?? '/';
+          request.url = `/api/marketplace${originalUrl}`;
+          void parseJsonBody(request).then(() => handlers).then(([, , marketplace]) => marketplace.default(request, response)).catch(next);
         });
       },
     }],

@@ -354,51 +354,30 @@ export default function App() {
   };
 
   // Open Chat from Listing
-  const handleStartChatWithSeller = (listing: Listing, e?: React.MouseEvent) => {
+  const handleStartChatWithSeller = async (listing: Listing, e?: React.MouseEvent) => {
     e?.stopPropagation();
-
+    
     let existingConv = conversations.find(
       c => c.listingId === listing.id && (c.buyerId === currentUser.id || c.sellerId === currentUser.id)
     );
-
     if (!existingConv) {
-      const newConv: Conversation = {
-        id: 'conv_' + Date.now(),
-        listingId: listing.id,
-        listingTitle: listing.title,
-        listingPrice: listing.price,
-        listingImage: listing.images[0],
-        buyerId: currentUser.id,
-        buyerName: currentUser.name,
-        buyerAvatar: currentUser.avatar,
-        sellerId: listing.seller.id,
-        sellerName: listing.seller.name,
-        sellerAvatar: listing.seller.avatar,
-        lastMessage: 'Is this item still available?',
-        lastTimestamp: new Date().toISOString(),
-        unreadCount: 0,
-        messages: [
-          {
-            id: 'msg_' + Date.now(),
-            senderId: currentUser.id,
-            senderName: currentUser.name,
-            recipientId: listing.seller.id,
-            text: `Hello ${listing.seller.name}, I am interested in "${listing.title}". Is it still available in ${listing.district}?`,
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      };
-
-      setConversations([newConv, ...conversations]);
-      existingConv = newConv;
+      const response = await fetch('/api/marketplace/conversations', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ otherUserId: listing.seller.id, listingId: listing.id }) });
+      if (response.ok) {
+        const payload = await response.json() as { data?: { id: string } };
+        if (payload.data?.id) existingConv = { id: payload.data.id, listingId: listing.id, listingTitle: listing.title, listingPrice: listing.price, listingImage: listing.images[0], buyerId: currentUser.id, buyerName: currentUser.name, buyerAvatar: currentUser.avatar, sellerId: listing.seller.id, sellerName: listing.seller.name, sellerAvatar: listing.seller.avatar, lastMessage: '', lastTimestamp: new Date().toISOString(), unreadCount: 0, messages: [] };
+      }
     }
 
+    if (!existingConv) return;
+    setConversations((current) => current.some((conversation) => conversation.id === existingConv?.id) ? current : [existingConv as Conversation, ...current]);
     setActiveChatConvId(existingConv.id);
     setIsChatOpen(true);
     if (selectedListing) setSelectedListing(null);
   };
 
-  const handleSendMessage = (conversationId: string, text: string, isOffer = false, offerAmount?: number) => {
+  const handleSendMessage = async (conversationId: string, text: string, isOffer = false, offerAmount?: number) => {
+    const response = await fetch('/api/marketplace/messages', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationId, body: text }) });
+    if (!response.ok) return;
     const updatedConversations = conversations.map((conv) => {
       if (conv.id === conversationId) {
         const newMsg = {
@@ -425,65 +404,7 @@ export default function App() {
 
     setConversations(updatedConversations);
 
-    // Simulate real-time response from other party
-    setTimeout(() => {
-      const targetConv = conversations.find(c => c.id === conversationId);
-      if (!targetConv) return;
 
-      const otherPartyName = targetConv.buyerId === currentUser.id ? targetConv.sellerName : targetConv.buyerName;
-      const otherPartyId = targetConv.buyerId === currentUser.id ? targetConv.sellerId : targetConv.buyerId;
-
-      let replyText = 'Sample seller reply: Thanks for reaching out. This conversation is part of the account and is not delivered to a real seller.';
-      if (isOffer && offerAmount) {
-        replyText = `Sample seller reply: Your offer of UGX ${offerAmount.toLocaleString()} is accepted for this preview. No agreement was made and no payment was processed.`;
-      }
-
-      const sellerReply = {
-        id: 'msg_reply_' + Date.now(),
-        senderId: otherPartyId,
-        senderName: otherPartyName,
-        recipientId: currentUser.id,
-        text: replyText,
-        timestamp: new Date().toISOString(),
-      };
-
-      setConversations(prev => prev.map(c => {
-        if (c.id === conversationId) {
-          const updatedMsgs = c.messages.map(m => {
-            if (m.isOffer && m.offerStatus === 'pending') {
-              return { ...m, offerStatus: 'accepted' as const };
-            }
-            return m;
-          });
-
-          return {
-            ...c,
-            lastMessage: replyText,
-            lastTimestamp: new Date().toISOString(),
-            messages: [...updatedMsgs, sellerReply],
-          };
-        }
-        return c;
-      }));
-
-      // Trigger actionable push alert
-      triggerPushNotification({
-        id: 'notif_reply_' + Date.now(),
-        title: `Account reply from ${otherPartyName}`,
-        body: replyText,
-        type: isOffer ? 'offer' : 'message',
-        timestamp: new Date().toISOString(),
-        read: false,
-        conversationId,
-        offerAmount: isOffer ? offerAmount : undefined,
-        actions: isOffer ? [
-          { label: 'View marketplace offer', actionKey: 'reply', style: 'primary' },
-          { label: 'Preview checkout', actionKey: 'accept_offer', style: 'primary' },
-        ] : [
-          { label: 'Reply', actionKey: 'reply', style: 'primary' },
-        ],
-      });
-    }, 1800);
   };
 
   // Action dispatcher from notification toast/modal
@@ -553,7 +474,7 @@ export default function App() {
   };
 
   // Post Ad Submission (with Free 18 check & driving to promo purchases when selected)
-  const handlePostAd = (newAdData: Partial<Listing>) => {
+  const handlePostAd = async (newAdData: Partial<Listing>) => {
     // Check if free 18 ads are done and user is not pro/subscribed
     if (!currentUser.isProMember && currentUser.freeListingsUsed >= currentUser.freeListingsTotal) {
       setIsPostAdOpen(false);
@@ -588,6 +509,10 @@ export default function App() {
       type: newAdData.type,
     };
 
+    const response = await fetch('/api/marketplace/listings', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newListing.title, description: newListing.description, category: newListing.category, district: newListing.district, price: newListing.price, images: newListing.images }) });
+    if (!response.ok) { alert('Listing could not be saved. Please try again.'); return; }
+    const payload = await response.json() as { data?: { id: string } };
+    if (payload.data?.id) newListing.id = payload.data.id;
     setListings(prev => [newListing, ...prev]);
 
     if (!currentUser.isProMember) {
@@ -609,8 +534,15 @@ export default function App() {
     });
   };
 
-  const handlePaymentSuccess = (transaction: PaymentTransaction) => {
+  const handlePaymentSuccess = async (transaction: PaymentTransaction) => {
     if (transaction.status !== 'COMPLETED') return;
+    if (transaction.purpose === 'ESCROW_PURCHASE' && transaction.listingId) {
+      const response = await fetch('/api/marketplace/orders', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: transaction.listingId, quantity: 1 }) });
+      if (!response.ok) { alert('Order could not be created. Please try again.'); return; }
+    }
+    if (transaction.purpose === 'BOOST_LISTING') {
+      await fetch('/api/marketplace/boost-orders', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: transaction.listingId || selectedBoostListing?.id, plan: 'paid-boost', amount: transaction.amount, paymentReference: transaction.reference }) });
+    }
 
     if (transaction.purpose === 'BOOST_LISTING') {
       const targetId = transaction.listingId || selectedBoostListing?.id;
@@ -689,7 +621,7 @@ export default function App() {
   };
 
   // Direct Payout Lines Handlers
-  const handleSavePayoutSettings = (updatedPayouts: {
+  const handleSavePayoutSettings = async (updatedPayouts: {
     mtnMomoNumber: string;
     mtnMomoName: string;
     airtelMoneyNumber: string;
@@ -697,6 +629,7 @@ export default function App() {
     momoPayMerchantCode: string;
     directPayoutsEnabled: boolean;
   }) => {
+    await fetch('/api/marketplace/profile', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: updatedPayouts.mtnMomoNumber || updatedPayouts.airtelMoneyNumber, bio: JSON.stringify(updatedPayouts) }) });
     setCurrentUser(prev => ({
       ...prev,
       ...updatedPayouts,

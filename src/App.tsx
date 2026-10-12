@@ -165,7 +165,7 @@ export default function App() {
   });
 
   const boostOrdersKey = authClientReady && authUserId
-    ? ['/api/boost-orders', authUserId] as const
+    ? ['/api/marketplace/boost-orders', authUserId] as const
     : null;
   const {
     data: boostOrdersData,
@@ -175,16 +175,11 @@ export default function App() {
   } = useSWR<{ orders: BoostOrder[]; canReview: boolean }, Error>(
     boostOrdersKey,
     async ([url, uid]) => {
-      const signedInUser = authClient?.currentUser;
-      if (!signedInUser || signedInUser?.uid !== uid) throw new Error('Sign in again to load payment submissions.');
-      const token = await signedInUser.getIdToken();
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      });
-      const result = await response.json().catch(() => null) as { orders?: BoostOrder[]; canReview?: boolean; error?: string } | null;
+      if (!uid) throw new Error('Sign in again to load payment submissions.');
+      const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
+      const result = await response.json().catch(() => null) as { data?: BoostOrder[]; error?: string } | null;
       if (!response.ok) throw new Error(result?.error || 'Payment submissions could not be loaded.');
-      return { orders: result?.orders ?? [], canReview: result?.canReview === true };
+      return { orders: result?.data ?? [], canReview: false };
     },
     { revalidateOnFocus: true, revalidateOnReconnect: true, shouldRetryOnError: false },
   );
@@ -204,6 +199,30 @@ export default function App() {
       })
       .finally(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!authUserId) return;
+    const loadUserData = async () => {
+      const [favoriteResponse, notificationResponse, conversationResponse] = await Promise.all([
+        fetch('/api/marketplace/favorites', { credentials: 'include' }),
+        fetch('/api/marketplace/notifications', { credentials: 'include' }),
+        fetch('/api/marketplace/conversations', { credentials: 'include' }),
+      ]);
+      if (favoriteResponse.ok) {
+        const payload = await favoriteResponse.json() as { data?: Array<{ listingId: string }> };
+        setFavorites((payload.data ?? []).map((favorite) => favorite.listingId));
+      }
+      if (notificationResponse.ok) {
+        const payload = await notificationResponse.json() as { data?: AppNotification[] };
+        setNotifications(payload.data ?? []);
+      }
+      if (conversationResponse.ok) {
+        const payload = await conversationResponse.json() as { data?: Conversation[] };
+        setConversations(payload.data ?? []);
+      }
+    };
+    void loadUserData();
+  }, [authUserId]);
 
   // Counts
   const unreadMessagesCount = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
@@ -283,13 +302,17 @@ export default function App() {
   });
 
   // Favorite toggle
-  const handleToggleFavorite = (id: string, e: React.MouseEvent) => {
+  const handleToggleFavorite = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (favorites.includes(id)) {
-      setFavorites(favorites.filter(f => f !== id));
-    } else {
-      setFavorites([...favorites, id]);
-    }
+    const isSaved = favorites.includes(id);
+    setFavorites((current) => isSaved ? current.filter((favorite) => favorite !== id) : [...current, id]);
+    const response = await fetch(`/api/marketplace/favorites${isSaved ? `?listingId=${encodeURIComponent(id)}` : ''}`, {
+      method: isSaved ? 'DELETE' : 'POST',
+      credentials: 'include',
+      headers: isSaved ? undefined : { 'Content-Type': 'application/json' },
+      body: isSaved ? undefined : JSON.stringify({ listingId: id }),
+    });
+    if (!response.ok) setFavorites((current) => isSaved ? [...current, id] : current.filter((favorite) => favorite !== id));
   };
 
   // Push notification dispatcher

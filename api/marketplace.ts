@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { auth } from './auth.ts';
-import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, notifications, orders, profiles } from './db.ts';
+import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, notifications, orders, profiles, reviews } from './db.ts';
 
 type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
@@ -67,6 +67,14 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       const rows = await db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(messages.createdAt);
       return json(res, 200, { data: rows });
     }
+    if (url.pathname === '/api/marketplace/conversations' && req.method === 'POST') {
+      const input = body(req);
+      const otherUserId = required(input.otherUserId, 'otherUserId');
+      const listingId = typeof input.listingId === 'string' ? input.listingId : null;
+      const existing = await db.select().from(conversations).where(or(and(eq(conversations.userAId, session.user.id), eq(conversations.userBId, otherUserId)), and(eq(conversations.userAId, otherUserId), eq(conversations.userBId, session.user.id)))).limit(1);
+      const [conversation] = existing.length ? existing : await db.insert(conversations).values({ id: randomUUID(), userAId: session.user.id, userBId: otherUserId, listingId }).returning();
+      return json(res, 200, { data: conversation });
+    }
     if (url.pathname === '/api/marketplace/messages' && req.method === 'POST') {
       const input = body(req);
       const conversationId = required(input.conversationId, 'conversationId');
@@ -129,6 +137,26 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       if (!Number.isInteger(amount) || amount <= 0) return json(res, 400, { error: 'Amount must be a positive whole number.' });
       const [order] = await db.insert(boostOrders).values({ id: randomUUID(), userId: session.user.id, listingId: typeof input.listingId === 'string' ? input.listingId : null, plan: plan.slice(0, 80), amount, paymentReference: typeof input.paymentReference === 'string' ? input.paymentReference.trim().slice(0, 160) : null, proofUrl: typeof input.proofUrl === 'string' ? input.proofUrl.trim().slice(0, 1000) : null }).returning();
       return json(res, 201, { data: order });
+    }
+    if (url.pathname === '/api/marketplace/reviews' && req.method === 'GET') {
+      const listingId = required(url.searchParams.get('listingId'), 'listingId');
+      const rows = await db.select().from(reviews).where(eq(reviews.listingId, listingId)).orderBy(desc(reviews.createdAt));
+      return json(res, 200, { data: rows });
+    }
+    if (url.pathname === '/api/marketplace/reviews' && req.method === 'POST') {
+      const input = body(req);
+      const listingId = required(input.listingId, 'listingId');
+      const sellerId = required(input.sellerId, 'sellerId');
+      const rating = Number(input.rating);
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) return json(res, 400, { error: 'Rating must be between 1 and 5.' });
+      const [review] = await db.insert(reviews).values({ id: randomUUID(), reviewerId: session.user.id, sellerId, listingId, rating, body: typeof input.body === 'string' ? input.body.trim().slice(0, 2000) : null }).returning();
+      await db.insert(notifications).values({ id: randomUUID(), userId: sellerId, type: 'review', title: 'New review received', body: `You received a ${rating}-star review.`, data: { reviewId: review.id, listingId } });
+      return json(res, 201, { data: review });
+    }
+    if (url.pathname === '/api/marketplace/seller/summary' && req.method === 'GET') {
+      const sellerListings = await db.select().from(listings).where(eq(listings.userId, session.user.id));
+      const sellerOrders = await db.select().from(orders).where(eq(orders.sellerId, session.user.id));
+      return json(res, 200, { data: { listings: sellerListings, orders: sellerOrders, earnings: sellerOrders.filter((order) => order.status === 'approved' || order.status === 'completed').reduce((sum, order) => sum + order.amount, 0) } });
     }
     if (url.pathname === '/api/marketplace/reports' && req.method === 'POST') {
       const input = body(req);

@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import path from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
 function parseJsonBody(request: import('node:http').IncomingMessage): Promise<void> {
@@ -38,7 +38,7 @@ export default defineConfig(() => {
         });
         const env = loadEnv(server.config.mode, process.cwd(), '');
         Object.assign(process.env, env);
-        const handlers = Promise.all([import('./api/health'), import('./api/auth/[...all]'), import('./api/marketplace'), import('./api/payments/webhook'), import('./api/uploads')]);
+        const handlers = Promise.all([import('./api/health.ts'), import('./api/auth/[...all].ts'), import('./api/marketplace.ts'), import('./api/payments/webhook.ts'), import('./api/uploads.ts')]);
         server.middlewares.use('/api/health', (request, response, next) => {
           void handlers.then(([health]) => health.default(request, response)).catch(next);
         });
@@ -60,7 +60,7 @@ export default defineConfig(() => {
     }],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {

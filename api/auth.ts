@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth';
-import { pool } from './db';
+import { pool } from './db.ts';
 
 const origins = process.env.NODE_ENV === 'development'
   ? ['http://localhost:3000', ...['V0_RUNTIME_URL', 'V0_DEV_APP_URL', 'V0_BUILD_URL', 'V0_SANDBOX_URL'].map((key) => process.env[key]).filter((value): value is string => Boolean(value))]

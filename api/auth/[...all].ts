@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { auth } from '../auth';
+import { auth } from '../auth.ts';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const headers = new Headers();

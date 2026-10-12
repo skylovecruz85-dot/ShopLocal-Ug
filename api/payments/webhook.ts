@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { db, boostOrders } from '../db';
+import { db, boostOrders } from '../db.ts';
 import { eq } from 'drizzle-orm';
 
 export default async function paymentWebhook(req: IncomingMessage, res: ServerResponse) {

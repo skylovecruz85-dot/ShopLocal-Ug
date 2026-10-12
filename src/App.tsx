@@ -1284,7 +1284,7 @@ export default function App() {
                   }`}
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Sample Badges Only</span>
+                  <span>Verified Sellers</span>
                 </button>
 
                 <button

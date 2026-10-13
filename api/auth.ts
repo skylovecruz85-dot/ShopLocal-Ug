@@ -3,7 +3,7 @@ import { pool } from './db.ts';
 
 const origins = process.env.NODE_ENV === 'development'
   ? ['http://localhost:3000', ...['V0_RUNTIME_URL', 'V0_DEV_APP_URL', 'V0_BUILD_URL', 'V0_SANDBOX_URL'].map((key) => process.env[key]).filter((value): value is string => Boolean(value))]
-  : [process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '', process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''].filter(Boolean);
+  : ['https://shoplocal-ug.vercel.app', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '', process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''].filter(Boolean);
 
 const logDevCode = (kind: 'verification' | 'password-reset', email: string, url: string) => {
   if (process.env.NODE_ENV === 'development') console.info(`[better-auth:${kind}] ${email} -> ${url}`);
@@ -11,7 +11,7 @@ const logDevCode = (kind: 'verification' | 'password-reset', email: string, url:
 
 export const auth = betterAuth({
   database: pool,
-  baseURL: process.env.BETTER_AUTH_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.V0_RUNTIME_URL),
+  baseURL: process.env.BETTER_AUTH_URL ?? 'https://shoplocal-ug.vercel.app',
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins: origins,
   emailAndPassword: {

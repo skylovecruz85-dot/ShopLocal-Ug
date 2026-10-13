@@ -69,6 +69,7 @@ import { ChatModal } from './components/ChatModal';
 import { MomoPaymentModal } from './components/MomoPaymentModal';
 import { PricingPlansModal } from './components/PricingPlansModal';
 import { AdminBoostOrdersModal } from './components/AdminBoostOrdersModal';
+import AdminReviewPanel from './components/AdminReviewPanel';
 import { BiometricAuthModal } from './components/BiometricAuthModal';
 import { SellerDashboard } from './components/SellerDashboard';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -1548,8 +1549,10 @@ export default function App() {
         />
       )}
 
-      {/* MODAL 4C: Admin Boost Orders Modal (Verification & Approval) */}
-      {isAdminBoostOrdersOpen && (
+  {isAdminBoostOrdersOpen && <div className="fixed inset-0 z-40 overflow-y-auto bg-black/70 p-4"><div className="mx-auto mt-8 max-w-6xl"><AdminReviewPanel darkMode={darkMode} /></div></div>}
+
+  {/* MODAL 4C: Admin Boost Orders Modal (Verification & Approval) */}
+  {isAdminBoostOrdersOpen && (
         <AdminBoostOrdersModal
           orders={boostOrders}
           listings={listings}

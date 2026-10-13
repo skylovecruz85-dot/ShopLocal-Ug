@@ -2,14 +2,17 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { auth } from './auth.ts';
-import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, notifications, orders, profiles, reviews } from './db.ts';
+import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, notifications, orders, profiles, reviews, user } from './db.ts';
 
 type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
 const body = (req: RequestWithBody) => (req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {});
 const required = (value: unknown, field: string) => { if (typeof value !== 'string' || !value.trim()) throw new Error(`Invalid ${field}`); return value.trim(); };
 const getUser = async (req: IncomingMessage) => auth.api.getSession({ headers: new Headers({ cookie: req.headers.cookie ?? '' }) });
-const isAdmin = (userId: string) => Boolean(process.env.SHOPLOCAL_ADMIN_USER_ID && userId === process.env.SHOPLOCAL_ADMIN_USER_ID);
+const isAdmin = (userId: string) => {
+  const configuredIds = [process.env.SHOPLOCAL_ADMIN_USER_ID, process.env.BOOST_ADMIN_FIREBASE_UID].filter((value): value is string => Boolean(value?.trim()));
+  return configuredIds.includes(userId);
+};
 
 export default async function handler(req: RequestWithBody, res: ServerResponse) {
   try {
@@ -24,6 +27,31 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       return json(res, 200, { data: rows, page, limit });
     }
     if (!session?.user) return json(res, 401, { error: 'Authentication required.' });
+    if (url.pathname === '/api/marketplace/admin/overview' && req.method === 'GET') {
+      if (!isAdmin(session.user.id)) return json(res, 403, { error: 'Admin access required.' });
+      const [users, listingRows, orderRows, reportRows, boostRows] = await Promise.all([
+        db.select({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt }).from(user).orderBy(desc(user.createdAt)).limit(200),
+        db.select().from(listings).orderBy(desc(listings.createdAt)).limit(200),
+        db.select().from(orders).orderBy(desc(orders.createdAt)).limit(200),
+        db.select().from(moderationReports).orderBy(desc(moderationReports.createdAt)).limit(200),
+        db.select().from(boostOrders).orderBy(desc(boostOrders.createdAt)).limit(200),
+      ]);
+      return json(res, 200, { data: { users, listings: listingRows, orders: orderRows, reports: reportRows, boostOrders: boostRows } });
+    }
+    if (url.pathname === '/api/marketplace/admin/listings/review' && req.method === 'POST') {
+      if (!isAdmin(session.user.id)) return json(res, 403, { error: 'Admin access required.' });
+      const input = body(req); const listingId = required(input.id, 'id'); const status = required(input.status, 'status');
+      if (!['active', 'pending', 'rejected', 'suspended'].includes(status)) return json(res, 400, { error: 'Invalid listing status.' });
+      const [listing] = await db.update(listings).set({ status, updatedAt: new Date() }).where(eq(listings.id, listingId)).returning();
+      return json(res, 200, { data: listing });
+    }
+    if (url.pathname === '/api/marketplace/admin/orders/review' && req.method === 'POST') {
+      if (!isAdmin(session.user.id)) return json(res, 403, { error: 'Admin access required.' });
+      const input = body(req); const orderId = required(input.id, 'id'); const status = required(input.status, 'status');
+      if (!['pending', 'approved', 'completed', 'cancelled', 'refunded'].includes(status)) return json(res, 400, { error: 'Invalid order status.' });
+      const [order] = await db.update(orders).set({ status, updatedAt: new Date() }).where(eq(orders.id, orderId)).returning();
+      return json(res, 200, { data: order });
+    }
     if (url.pathname === '/api/marketplace/admin/reports' && req.method === 'GET') {
       if (!isAdmin(session.user.id)) return json(res, 403, { error: 'Admin access required.' });
       const rows = await db.select().from(moderationReports).orderBy(desc(moderationReports.createdAt)).limit(200);

@@ -1,21 +1,30 @@
 import { useEffect, useState } from 'react';
 
 type ReviewItem = { id: string; status: string; reason?: string; plan?: string; amount?: number; createdAt: string };
+type AdminListing = { id: string; title: string; status: string; category: string; price: number; createdAt: string };
+type AdminOrder = { id: string; status: string; amount: number; listingId: string; createdAt: string };
+type AdminOverview = { users: Array<{ id: string; name: string; email: string; createdAt: string }>; listings: AdminListing[]; orders: AdminOrder[]; reports: ReviewItem[]; boostOrders: ReviewItem[] };
 
-async function load<T>(path: string): Promise<T[]> {
+async function load<T>(path: string): Promise<T> {
   const response = await fetch(path, { credentials: 'include' });
   if (!response.ok) throw new Error('Admin access required.');
-  const payload = await response.json() as { data?: T[] };
-  return payload.data ?? [];
+  const payload = await response.json() as { data?: T };
+  if (!payload.data) throw new Error('Admin data unavailable.');
+  return payload.data;
 }
 
 export default function AdminReviewPanel({ darkMode = false }: { darkMode?: boolean }) {
   const [reports, setReports] = useState<ReviewItem[]>([]);
   const [boostOrders, setBoostOrders] = useState<ReviewItem[]>([]);
+  const [listings, setListings] = useState<AdminListing[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [users, setUsers] = useState<AdminOverview['users']>([]);
   const [error, setError] = useState('');
   useEffect(() => {
-    void Promise.all([load<ReviewItem>('/api/marketplace/admin/reports'), load<ReviewItem>('/api/marketplace/admin/boost-orders')])
-      .then(([nextReports, nextOrders]) => { setReports(nextReports); setBoostOrders(nextOrders); })
+    void load<AdminOverview>('/api/marketplace/admin/overview')
+      .then((overview) => {
+        setReports(overview.reports); setBoostOrders(overview.boostOrders); setListings(overview.listings); setOrders(overview.orders); setUsers(overview.users);
+      })
       .catch((reason: Error) => setError(reason.message));
   }, []);
   const review = async (path: string, id: string, status: string) => {
@@ -29,5 +38,10 @@ export default function AdminReviewPanel({ darkMode = false }: { darkMode?: bool
       <div><h3 className="font-medium">Reports ({reports.length})</h3>{reports.map((item) => <div key={item.id} className="mt-2 rounded-xl border p-3 text-sm"><div>{item.reason}</div><div className="mt-2 flex gap-2"><button className="rounded-lg bg-emerald-600 px-3 py-1 text-white" onClick={() => void review('/api/marketplace/admin/reports/review', item.id, 'resolved')}>Resolve</button><button className="rounded-lg bg-red-600 px-3 py-1 text-white" onClick={() => void review('/api/marketplace/admin/reports/review', item.id, 'rejected')}>Reject</button></div></div>)}</div>
       <div><h3 className="font-medium">Boost payments ({boostOrders.length})</h3>{boostOrders.map((item) => <div key={item.id} className="mt-2 rounded-xl border p-3 text-sm"><div>{item.plan} · {item.amount?.toLocaleString()} UGX</div><div className="mt-2 flex gap-2"><button className="rounded-lg bg-emerald-600 px-3 py-1 text-white" onClick={() => void review('/api/marketplace/admin/boost-orders/review', item.id, 'approved')}>Approve</button><button className="rounded-lg bg-red-600 px-3 py-1 text-white" onClick={() => void review('/api/marketplace/admin/boost-orders/review', item.id, 'rejected')}>Reject</button></div></div>)}</div>
     </div>}
+    <div className="mt-5 grid gap-5 md:grid-cols-3">
+      <div><h3 className="font-medium">Listings ({listings.length})</h3>{listings.slice(0, 8).map((item) => <div key={item.id} className="mt-2 rounded-xl border p-3 text-sm"><div className="font-medium">{item.title}</div><div className="text-xs opacity-70">{item.status} · UGX {item.price.toLocaleString()}</div><div className="mt-2 flex gap-2"><button className="rounded-lg bg-emerald-600 px-3 py-1 text-white" onClick={() => void review('/api/marketplace/admin/listings/review', item.id, 'active')}>Approve</button><button className="rounded-lg bg-red-600 px-3 py-1 text-white" onClick={() => void review('/api/marketplace/admin/listings/review', item.id, 'rejected')}>Reject</button></div></div>)}</div>
+      <div><h3 className="font-medium">Orders ({orders.length})</h3>{orders.slice(0, 8).map((item) => <div key={item.id} className="mt-2 rounded-xl border p-3 text-sm"><div>UGX {item.amount.toLocaleString()}</div><div className="text-xs opacity-70">{item.status}</div><div className="mt-2 flex gap-2"><button className="rounded-lg bg-emerald-600 px-3 py-1 text-white" onClick={() => void review('/api/marketplace/admin/orders/review', item.id, 'approved')}>Approve</button><button className="rounded-lg bg-red-600 px-3 py-1 text-white" onClick={() => void review('/api/marketplace/admin/orders/review', item.id, 'cancelled')}>Cancel</button></div></div>)}</div>
+      <div><h3 className="font-medium">Users ({users.length})</h3>{users.slice(0, 8).map((item) => <div key={item.id} className="mt-2 rounded-xl border p-3 text-sm"><div className="font-medium">{item.name}</div><div className="text-xs opacity-70">{item.email}</div></div>)}</div>
+    </div>
   </section>;
 }

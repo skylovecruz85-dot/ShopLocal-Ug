@@ -44,6 +44,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
   const [phoneError, setPhoneError] = useState('');
   const timeoutRef = useRef<number | null>(null);
+  const [paymentError, setPaymentError] = useState('');
 
   const isDirectToSeller = purpose === 'ESCROW_PURCHASE' && Boolean(sellerName);
   const recipientName = isDirectToSeller ? sellerName : 'ShopLocal UG payment';
@@ -76,6 +77,22 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
 
     setPhoneError('');
     setStep('confirmation');
+  };
+
+  const handlePesapalCheckout = async () => {
+    setPaymentError('');
+    setStep('processing');
+    const digits = phoneNumber.replace(/\D/g, '');
+    const normalizedPhone = digits.startsWith('256') ? digits : `256${digits.startsWith('0') ? digits.slice(1) : digits}`;
+    try {
+      const response = await fetch('/api/payments/pesapal', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, currency: 'UGX', description: itemTitle || getPurposeLabel(purpose), phoneNumber: normalizedPhone, purpose, listingId }) });
+      const payload = await response.json() as { data?: { redirectUrl: string }; error?: string };
+      if (!response.ok || !payload.data?.redirectUrl) throw new Error(payload.error || 'Pesapal checkout could not be started.');
+      window.location.assign(payload.data.redirectUrl);
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Pesapal checkout could not be started.');
+      setStep('confirmation');
+    }
   };
 
   const handleSimulateSuccess = () => {
@@ -136,7 +153,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
             </div>
             <div>
               <h2 className="font-display text-base font-extrabold" id="payment-checkout-title">Payment checkout</h2>
-              <p className={`text-[11px] ${secondaryTextClass}`}>Preview only · no live payment</p>
+              <p className={`text-[11px] ${secondaryTextClass}`}>Secure checkout by Pesapal</p>
             </div>
           </div>
           <button
@@ -189,7 +206,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
             </fieldset>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold" htmlFor="payment-phone-number">Test mobile number</label>
+              <label className="mb-1.5 block text-xs font-bold" htmlFor="payment-phone-number">Ugandan mobile number</label>
               <input
                 aria-describedby={phoneError ? 'payment-phone-error' : 'payment-phone-help'}
                 aria-invalid={Boolean(phoneError)}
@@ -203,7 +220,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
                 value={phoneNumber}
               />
               <p className={`mt-1 text-[11px] ${phoneError ? 'text-red-500' : secondaryTextClass}`} id={phoneError ? 'payment-phone-error' : 'payment-phone-help'}>
-                {phoneError || 'Use a test number. It is used only in this preview and is not saved.'}
+                {phoneError || 'Pesapal securely handles the mobile-money prompt. Your PIN is never entered here.'}
               </p>
             </div>
 
@@ -219,7 +236,7 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
               <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                 <Smartphone className="size-6" />
               </div>
-              <h3 className="font-display text-lg font-extrabold">Preview confirmation</h3>
+              <h3 className="font-display text-lg font-extrabold">Confirm Pesapal checkout</h3>
               <p className={`mt-1 text-sm ${secondaryTextClass}`}>Selected network: {selectedMethod === 'MTN_MOMO' ? 'MTN MoMo' : 'Airtel Money'}</p>
             </div>
 
@@ -228,13 +245,14 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
               <div className="mt-2 flex justify-between gap-3"><span className={secondaryTextClass}>Payment recipient</span><strong className="text-right">{recipientName}</strong></div>
             </div>
 
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200" role="note">
-              No telecom prompt was sent. Never enter or share a real mobile money PIN in this payment.
+            <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200" role="note">
+              You will be redirected to Pesapal to choose mobile money or another supported payment method. Never enter your PIN on ShopLocal.
             </div>
+            {paymentError && <p className="text-xs font-medium text-red-500" role="alert">{paymentError}</p>}
 
             <div className="flex gap-2">
               <button className={`flex-1 rounded-xl border px-3 py-3 text-sm font-semibold transition-colors ${darkMode ? 'border-slate-700 hover:bg-slate-800' : 'border-slate-200 hover:bg-slate-50'}`} onClick={() => setStep('input')} type="button">Back</button>
-              <button className="flex-1 rounded-xl bg-emerald-600 px-3 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700" onClick={handleSimulateSuccess} type="button">Simulate success</button>
+              <button className="flex-1 rounded-xl bg-emerald-600 px-3 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700" onClick={() => void handlePesapalCheckout()} type="button">Continue to Pesapal</button>
             </div>
           </div>
         )}
@@ -254,8 +272,8 @@ export const MomoPaymentModal: React.FC<MomoPaymentModalProps> = ({
             </div>
             <div>
               <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-900 dark:bg-amber-950 dark:text-amber-200">Payment only</span>
-              <h3 className="mt-2 font-display text-xl font-extrabold">Payment simulated</h3>
-              <p className={`mt-1 text-xs leading-relaxed ${secondaryTextClass}`}>No payment was initiated, no funds moved, and this screen is not proof of payment.</p>
+              <h3 className="mt-2 font-display text-xl font-extrabold">Payment initiated</h3>
+              <p className={`mt-1 text-xs leading-relaxed ${secondaryTextClass}`}>Complete the payment on Pesapal. ShopLocal will update the order after Pesapal confirms it.</p>
             </div>
 
             <div className={`space-y-2 rounded-2xl border p-4 text-left text-xs ${darkMode ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-slate-50'}`}>

@@ -38,7 +38,7 @@ export default defineConfig(() => {
         });
         const env = loadEnv(server.config.mode, process.cwd(), '');
         Object.assign(process.env, env);
-        const handlers = Promise.all([import('./api/health.ts'), import('./api/auth/[...all].ts'), import('./api/marketplace.ts'), import('./api/payments/webhook.ts'), import('./api/uploads.ts')]);
+        const handlers = Promise.all([import('./api/health.ts'), import('./api/auth/[...all].ts'), import('./api/marketplace.ts'), import('./api/payments/webhook.ts'), import('./api/uploads.ts'), import('./api/payments/pesapal.ts')]);
         server.middlewares.use('/api/health', (request, response, next) => {
           void handlers.then(([health]) => health.default(request, response)).catch(next);
         });
@@ -52,6 +52,14 @@ export default defineConfig(() => {
         });
         server.middlewares.use('/api/payments/webhook', (request, response, next) => {
           void parseJsonBody(request).then(() => handlers).then(([, , , webhook]) => webhook.default(request, response)).catch(next);
+        });
+        server.middlewares.use('/api/payments/pesapal/ipn', (request, response, next) => {
+          void handlers.then(([, , , , , pesapal]) => pesapal.pesapalIpn(request, response)).catch(next);
+        });
+        server.middlewares.use('/api/payments/pesapal', (request, response, next) => {
+          const originalUrl = request.url ?? '/';
+          request.url = `/api/payments/pesapal${originalUrl}`;
+          void parseJsonBody(request).then(() => handlers).then(([, , , , , pesapal]) => pesapal.default(request, response)).catch(next);
         });
         server.middlewares.use('/api/uploads', (request, response, next) => {
           void handlers.then(([, , , , upload]) => upload.default(request, response)).catch(next);

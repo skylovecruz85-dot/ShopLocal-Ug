@@ -1,438 +1,334 @@
 import React, { useState } from 'react';
-import { 
-  X, 
-  ArrowLeft, 
-  Upload, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Smartphone, 
-  Clock, 
-  AlertCircle,
-  Copy,
-  Check,
-  Image as ImageIcon
-} from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { BoostOrder } from '../types';
+import { AlertCircle, CheckCircle2, LoaderCircle, Upload, X } from 'lucide-react';
 import { PAYMENT_CONFIG } from '../config/paymentConfig';
 
-interface ManualBoostPaymentModalProps {
-  amount: 9500 | 21500 | 28550 | number;
-  planName: '7 days' | '30 days' | 'Boost Premium';
+export type BoostPlanName = '7 days' | '30 days' | 'Boost Premium';
+
+export interface ManualBoostPaymentConfig {
+  amount: 9500 | 21500 | 28550;
+  planName: BoostPlanName;
   adTitle: string;
-  userPhone: string;
-  listingId?: string;
-  onClose: () => void;
-  onSubmitOrder: (order: BoostOrder) => void;
+  listingId: string;
+}
+
+export interface ManualBoostSubmission {
+  network: 'MTN' | 'Airtel';
+  payerNumber: string;
+  transactionId: string;
+  screenshotDataUrl: string;
+}
+
+interface ManualBoostPaymentModalProps {
+  config: ManualBoostPaymentConfig;
+  isAuthenticated: boolean;
   darkMode?: boolean;
+  onClose: () => void;
+  onRequestSignIn: () => void;
+  onSubmit: (submission: ManualBoostSubmission) => Promise<void>;
+}
+
+const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+async function compressScreenshot(file: File): Promise<File> {
+  if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+    throw new Error('Upload a JPG, PNG, or WEBP screenshot.');
+  }
+
+  if (file.size <= MAX_SCREENSHOT_BYTES) return file;
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error('This image could not be opened. Choose a JPG, PNG, or WEBP screenshot.');
+  }
+
+  try {
+    const maxDimension = 2000;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('The screenshot could not be prepared. Try another image.');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    for (const quality of [0.86, 0.76, 0.66]) {
+      const compressed = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', quality);
+      });
+      if (compressed && compressed.size <= MAX_SCREENSHOT_BYTES) {
+        return new File([compressed], 'payment-screenshot.jpg', { type: 'image/jpeg' });
+      }
+    }
+
+    throw new Error('The screenshot is too large. Choose a smaller image (maximum 2 MB).');
+  } finally {
+    bitmap.close();
+  }
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  const preparedFile = await compressScreenshot(file);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('The screenshot could not be read. Please choose it again.'));
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('The screenshot could not be read. Please choose it again.'));
+        return;
+      }
+      resolve(reader.result);
+    };
+    reader.readAsDataURL(preparedFile);
+  });
 }
 
 export const ManualBoostPaymentModal: React.FC<ManualBoostPaymentModalProps> = ({
-  amount,
-  planName,
-  adTitle,
-  userPhone,
-  listingId,
+  config,
+  isAuthenticated,
+  darkMode = false,
   onClose,
-  onSubmitOrder,
-  darkMode,
+  onRequestSignIn,
+  onSubmit,
 }) => {
-  const [networkTab, setNetworkTab] = useState<'MTN' | 'Airtel'>('MTN');
-  const [networkDropdown, setNetworkDropdown] = useState<'MTN' | 'Airtel'>('MTN');
-  const [payerPhone, setPayerPhone] = useState(userPhone || '07');
-  const [txnId, setTxnId] = useState('');
-  const [screenshot, setScreenshot] = useState<string>('');
-  const [copiedNumber, setCopiedNumber] = useState(false);
+  const [network, setNetwork] = useState<'MTN' | 'Airtel'>('MTN');
+  const [payerNumber, setPayerNumber] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const amountText = `USh ${config.amount.toLocaleString('en-UG')}`;
+  const payeeNumber = network === 'MTN' ? PAYMENT_CONFIG.mtnMomo : PAYMENT_CONFIG.airtelMoney;
+  const payeeName = network === 'MTN' ? PAYMENT_CONFIG.mtnName : PAYMENT_CONFIG.airtelName;
+  const paymentDestinationConfigured = Boolean(payeeNumber.trim() && payeeName.trim());
+  const surface = darkMode ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-950';
+  const muted = darkMode ? 'text-zinc-400' : 'text-zinc-600';
+  const field = darkMode
+    ? 'border-zinc-700 bg-zinc-900 text-white placeholder:text-zinc-500 focus:border-[#00E676]'
+    : 'border-zinc-300 bg-white text-zinc-950 placeholder:text-zinc-400 focus:border-[#00C853]';
 
-  const mtnRecipientPhone = PAYMENT_CONFIG.mtnMomo;
-  const mtnRecipientName = PAYMENT_CONFIG.mtnName;
-  const airtelRecipientPhone = PAYMENT_CONFIG.airtelMoney;
-  const airtelRecipientName = PAYMENT_CONFIG.airtelName;
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage(null);
 
-  const handleCopyPhone = (num: string) => {
-    navigator.clipboard?.writeText(num);
-    setCopiedNumber(true);
-    setTimeout(() => setCopiedNumber(false), 2000);
-  };
-
-  const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setScreenshot(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!paymentDestinationConfigured) {
+      setErrorMessage(`${network} payment details are not configured yet. Do not send money until a verified receiver number is shown.`);
+      return;
     }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-
-    const cleanPhone = payerPhone.replace(/\s+/g, '');
-    if (!cleanPhone || cleanPhone.length < 9) {
-      setErrorMsg('Please enter the full phone number used to make the payment (07...).');
+    if (!isAuthenticated) {
+      setErrorMessage('Sign in with a verified phone number before submitting payment details.');
+      return;
+    }
+    if (!screenshot) {
+      setErrorMessage('Upload a screenshot of the payment SMS to continue.');
       return;
     }
 
-    if (!txnId.trim()) {
-      setErrorMsg('Please enter the Transaction ID received from telecom SMS.');
-      return;
+    setIsSubmitting(true);
+    try {
+      const screenshotDataUrl = await fileToDataUrl(screenshot);
+      await onSubmit({
+        network,
+        payerNumber: payerNumber.trim(),
+        transactionId: transactionId.trim(),
+        screenshotDataUrl,
+      });
+      setSubmitted(true);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'We could not submit the payment details. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newOrder: BoostOrder = {
-      id: 'boost_ord_' + Date.now(),
-      adTitle: adTitle || 'Ad Promotion',
-      userPhone: cleanPhone,
-      plan: planName,
-      amount,
-      network: networkDropdown,
-      payerNumber: cleanPhone,
-      txnId: txnId.trim(),
-      screenshot: screenshot || undefined,
-      time: new Date().toISOString(),
-      status: 'Pending',
-      listingId,
-    };
-
-    confetti({
-      particleCount: 80,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
-
-    setSubmitted(true);
-    onSubmitOrder(newOrder);
   };
-
-  const currentNumber = networkTab === 'MTN' ? mtnRecipientPhone : airtelRecipientPhone;
-  const currentName = networkTab === 'MTN' ? mtnRecipientName : airtelRecipientName;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-      <div 
-        className="rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-zinc-800 bg-[#121212] text-white flex flex-col relative"
-        onClick={(e) => e.stopPropagation()}
+    <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-5" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manual-boost-title"
+        className={`my-auto flex max-h-[94vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border shadow-2xl ${darkMode ? 'border-zinc-800' : 'border-zinc-200'} ${surface}`}
       >
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-[#2A2A2A] bg-[#181818] flex items-center justify-between sticky top-0 z-10">
-          <div className="flex items-center gap-2.5">
-            {!submitted && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1 -ml-1 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-                title="Back"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            <div>
-              <h3 className="font-bold text-[16px] text-white leading-tight">
-                Pay to Boost Your Ad
-              </h3>
-              <p className="text-[11px] text-zinc-400 mt-0.5 truncate max-w-[280px]">
-                {adTitle || 'ShopLocal Ug Verified Ad'} • <strong className="text-[#00E676]">{planName}</strong>
-              </p>
-            </div>
+        <header className={`flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-6 ${darkMode ? 'border-zinc-800' : 'border-zinc-200'}`}>
+          <div>
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-600">Manual Mobile Money</p>
+            <h2 id="manual-boost-title" className="text-lg font-extrabold tracking-tight sm:text-xl">{submitted ? 'Payment details received' : 'Pay to Boost Your Ad'}</h2>
+            <p className={`mt-1 text-sm ${muted}`}>{config.adTitle}</p>
           </div>
+          {!submitted && (
+            <button type="button" onClick={onClose} className={`rounded-full p-2 transition-colors ${darkMode ? 'text-zinc-400 hover:bg-zinc-800 hover:text-white' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`} aria-label="Close payment details">
+              <X aria-hidden="true" />
+            </button>
+          )}
+        </header>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Modal Body */}
         {submitted ? (
-          /* User Success Screen: Payment received! We are verifying... */
-          <div className="p-6 sm:p-8 text-center space-y-4 bg-[#121212]">
-            <div className="w-16 h-16 rounded-full bg-[#00E676]/15 border-2 border-[#00E676] flex items-center justify-center mx-auto text-[#00E676]">
-              <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+          <div className="flex flex-col items-center gap-4 overflow-y-auto px-6 py-10 text-center sm:py-12">
+            <div className="flex size-14 items-center justify-center rounded-full bg-[#00E676]/15 text-emerald-600">
+              <CheckCircle2 className="size-8" aria-hidden="true" />
             </div>
-
-            <div className="space-y-1.5">
-              <h4 className="text-lg font-extrabold text-white">
-                Payment Received!
-              </h4>
-              <p className="text-[13px] text-zinc-300 leading-relaxed font-medium">
-                Payment received! We are verifying. Your ad will be <span className="text-[#00E676] font-bold">TOP within 5 minutes</span>. You will get SMS.
+            <div className="max-w-sm">
+              <h3 className="text-xl font-extrabold">Proof submitted for review</h3>
+              <p className={`mt-2 text-sm leading-6 ${muted}`}>
+                Your submission is pending manual review. The app does not initiate the transfer; you pay the displayed mobile-money receiver directly. An admin reviews the transaction before approving your boost.
               </p>
             </div>
-
-            <div className="bg-[#1C1C1C] rounded-xl p-3.5 border border-[#2A2A2A] text-left text-xs space-y-1.5 font-mono">
-              <div className="flex justify-between text-zinc-400">
-                <span>Ad:</span>
-                <span className="text-white font-semibold truncate max-w-[200px]">{adTitle}</span>
-              </div>
-              <div className="flex justify-between text-zinc-400">
-                <span>Plan:</span>
-                <span className="text-[#00E676] font-bold">{planName} (USh {amount.toLocaleString()})</span>
-              </div>
-              <div className="flex justify-between text-zinc-400">
-                <span>Network:</span>
-                <span className="text-white">{networkDropdown}</span>
-              </div>
-              <div className="flex justify-between text-zinc-400">
-                <span>TXN ID:</span>
-                <span className="text-white font-bold">{txnId}</span>
-              </div>
-              <div className="flex justify-between text-zinc-400">
-                <span>Status:</span>
-                <span className="text-amber-400 font-bold uppercase">PENDING PAYMENT</span>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full h-[48px] rounded-lg bg-[#00E676] hover:bg-[#00C853] text-black font-extrabold text-sm transition-all cursor-pointer shadow-md"
-              >
-                Done / View My Ads
-              </button>
-            </div>
+            <button type="button" onClick={onClose} className="mt-2 rounded-xl bg-[#00E676] px-6 py-3 text-sm font-extrabold text-black transition-colors hover:bg-[#00C853]">
+              Back to Seller Studio
+            </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-            {/* Network Tabs: [ MTN MoMo ] [ Airtel Money ] */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-                Choose Network
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+              <div>
+                <p className={`mb-3 text-sm font-semibold ${muted}`}>Choose the network you&apos;re paying with</p>
+                <div role="tablist" aria-label="Mobile money network" className={`grid grid-cols-2 rounded-xl p-1 ${darkMode ? 'bg-zinc-900' : 'bg-zinc-100'}`}>
+                  {(['MTN', 'Airtel'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      role="tab"
+                      aria-selected={network === option}
+                      onClick={() => setNetwork(option)}
+                      className={`min-h-11 rounded-lg px-3 text-sm font-bold transition-colors ${network === option ? 'bg-[#00E676] text-black shadow-sm' : darkMode ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-950'}`}
+                    >
+                      {option === 'MTN' ? 'MTN MoMo' : 'Airtel Money'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`rounded-xl border p-4 ${darkMode ? 'border-zinc-800 bg-zinc-900/80' : 'border-emerald-100 bg-emerald-50/70'}`}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="text-base font-extrabold">Pay {amountText} to boost</h3>
+                  <span className={`shrink-0 text-xs font-semibold ${muted}`}>{config.planName}</span>
+                </div>
+                {paymentDestinationConfigured ? (
+                  <>
+                    {network === 'Airtel' && <p className="mt-3 text-xs font-bold uppercase tracking-wider text-red-600">Send Money</p>}
+                    <ol className={`mt-3 list-inside list-decimal space-y-2 text-sm leading-5 ${darkMode ? 'text-zinc-200' : 'text-zinc-700'}`}>
+                      <li>Send {amountText} to <strong className="font-extrabold tracking-wide">{payeeNumber}</strong></li>
+                      <li>Confirm the receiver name is <strong className="font-extrabold">{payeeName}</strong></li>
+                      <li>After paying, submit the transaction ID and SMS screenshot below.</li>
+                    </ol>
+                    <p className={`mt-3 border-t pt-3 text-xs leading-5 ${darkMode ? 'border-zinc-800 text-zinc-400' : 'border-emerald-200 text-zinc-600'}`}>
+                      Send the money directly to the receiver shown above. This form only records your payment details and proof for review.
+                    </p>
+                  </>
+                ) : (
+                  <p role="alert" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm leading-5 text-amber-800 dark:text-amber-100">
+                    {network} receiving details are not configured yet. Do not send money until a verified number and account name appear here.
+                  </p>
+                )}
+              </div>
+
+              {!isAuthenticated && (
+                <div className={`flex flex-col gap-3 rounded-xl border p-3.5 sm:flex-row sm:items-center sm:justify-between ${darkMode ? 'border-amber-700/50 bg-amber-950/30' : 'border-amber-200 bg-amber-50'}`}>
+                  <p className={`text-xs leading-5 ${darkMode ? 'text-amber-100' : 'text-amber-900'}`}>Sign in with a verified phone number before submitting payment details.</p>
+                  <button type="button" onClick={onRequestSignIn} className="shrink-0 rounded-lg border border-amber-500/50 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/40">
+                    Sign in
+                  </button>
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
+                  <span>Network used to pay</span>
+                  <select value={network} onChange={(event) => setNetwork(event.target.value as 'MTN' | 'Airtel')} className={`min-h-11 rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-[#00E676]/30 ${field}`}>
+                    <option value="MTN">MTN</option>
+                    <option value="Airtel">Airtel</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
+                  <span>Phone number used to pay</span>
+                  <input
+                    required
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    pattern="(?:07[0-9]{8}|\\+?2567[0-9]{8})"
+                    title="Enter a Uganda mobile number, for example 0751234567."
+                    value={payerNumber}
+                    onChange={(event) => setPayerNumber(event.target.value)}
+                    placeholder="07…"
+                    className={`min-h-11 rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-[#00E676]/30 ${field}`}
+                  />
+                </label>
+              </div>
+
+              <label className="flex flex-col gap-1.5 text-sm font-semibold">
+                <span>Transaction ID from SMS</span>
+                <input
+                  required
+                  type="text"
+                  autoComplete="off"
+                  minLength={6}
+                  maxLength={32}
+                  pattern="[A-Za-z0-9-]{6,32}"
+                  value={transactionId}
+                  onChange={(event) => setTransactionId(event.target.value)}
+                  placeholder="e.g. 1234567890"
+                  className={`min-h-11 rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-[#00E676]/30 ${field}`}
+                />
               </label>
-              <div className="grid grid-cols-2 gap-2 bg-[#1C1C1C] p-1 rounded-xl border border-[#2A2A2A]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNetworkTab('MTN');
-                    setNetworkDropdown('MTN');
-                  }}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    networkTab === 'MTN'
-                      ? 'bg-[#FFCC00] text-black shadow-sm'
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full bg-black/60"></span>
-                  <span>MTN MoMo</span>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNetworkTab('Airtel');
-                    setNetworkDropdown('Airtel');
-                  }}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    networkTab === 'Airtel'
-                      ? 'bg-[#E60000] text-white shadow-sm'
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full bg-white"></span>
-                  <span>Airtel Money</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Instruction Card */}
-            <div className={`p-4 rounded-xl border ${
-              networkTab === 'MTN'
-                ? 'bg-[#1D2115] border-[#FFCC00]/40 text-zinc-100'
-                : 'bg-[#251515] border-[#E60000]/40 text-zinc-100'
-            }`}>
-              <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5">
-                <span className="text-xs font-bold text-white">
-                  Pay USh {amount.toLocaleString()} to boost
+              <label className="flex cursor-pointer flex-col gap-2 text-sm font-semibold">
+                <span>Upload SMS screenshot</span>
+                <span className={`flex min-h-14 items-center gap-3 rounded-lg border border-dashed px-3 py-3 transition-colors ${darkMode ? 'border-zinc-700 bg-zinc-900 hover:border-[#00E676]' : 'border-zinc-300 bg-zinc-50 hover:border-[#00C853]'}`}>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#00E676]/15 text-emerald-700"><Upload className="size-4" aria-hidden="true" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{screenshot?.name ?? 'Choose a payment screenshot'}</span>
+                    <span className={`mt-0.5 block text-xs font-normal ${muted}`}>JPG, PNG, or WEBP · maximum 2 MB</span>
+                  </span>
+                  <input
+                    required
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    aria-label="Upload SMS payment screenshot"
+                    onChange={(event) => {
+                      setScreenshot(event.target.files?.[0] ?? null);
+                      setErrorMessage(null);
+                    }}
+                  />
                 </span>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-black/40 text-white font-mono">
-                  {networkTab === 'MTN' ? '*165#' : '*185#'}
-                </span>
-              </div>
+              </label>
 
-              {networkTab === 'MTN' ? (
-                <ol className="text-xs space-y-1.5 text-zinc-200">
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-[#FFCC00]">1.</span>
-                    <span>Dial <strong>*165#</strong> &gt; Send Money</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-[#FFCC00]">2.</span>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span>Send USh <strong>{amount.toLocaleString()}</strong> to</span>
-                      <span className="font-mono font-bold text-white bg-black/60 px-1.5 py-0.5 rounded text-[13px]">
-                        0765326279
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyPhone('0765326279')}
-                        className="text-[11px] text-[#FFCC00] hover:underline flex items-center gap-0.5 cursor-pointer"
-                      >
-                        {copiedNumber ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedNumber ? 'Copied' : 'Copy'}</span>
-                      </button>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-[#FFCC00]">3.</span>
-                    <span>Name will show as: <strong className="text-white">VIOLA BABIRYE NAMULI</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-[#FFCC00]">4.</span>
-                    <span className="text-zinc-400">Enter details below after paying</span>
-                  </li>
-                </ol>
-              ) : (
-                <ol className="text-xs space-y-1.5 text-zinc-200">
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-[#FF5252]">1.</span>
-                    <span>Dial <strong>*185#</strong> &gt; Send Money</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-[#FF5252]">2.</span>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span>Send USh <strong>{amount.toLocaleString()}</strong> to</span>
-                      <span className="font-mono font-bold text-white bg-black/60 px-1.5 py-0.5 rounded text-[13px]">
-                        0754687918
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyPhone('0754687918')}
-                        className="text-[11px] text-[#FF5252] hover:underline flex items-center gap-0.5 cursor-pointer"
-                      >
-                        {copiedNumber ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedNumber ? 'Copied' : 'Copy'}</span>
-                      </button>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-[#FF5252]">3.</span>
-                    <span>Name will show as: <strong className="text-white">MUSA KINTU</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-[#FF5252]">4.</span>
-                    <span className="text-zinc-400">Enter details below after paying</span>
-                  </li>
-                </ol>
+              {errorMessage && (
+                <p role="alert" className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-200">
+                  <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <span>{errorMessage}</span>
+                </p>
               )}
             </div>
 
-            {/* Error Message if any */}
-            {errorMsg && (
-              <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-200 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            {/* Verification Inputs */}
-            <div className="space-y-3 pt-1">
-              {/* Dropdown: Network Used */}
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                  Network Used *
-                </label>
-                <select
-                  value={networkDropdown}
-                  onChange={(e) => {
-                    const val = e.target.value as 'MTN' | 'Airtel';
-                    setNetworkDropdown(val);
-                    setNetworkTab(val);
-                  }}
-                  className="w-full bg-[#1C1C1C] border border-[#2A2A2A] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-hidden focus:border-[#00E676]"
-                >
-                  <option value="MTN">MTN MoMo</option>
-                  <option value="Airtel">Airtel Money</option>
-                </select>
-              </div>
-
-              {/* Phone number used to pay */}
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                  Phone number used to pay (07...) *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="0772 123 456"
-                  value={payerPhone}
-                  onChange={(e) => setPayerPhone(e.target.value)}
-                  className="w-full bg-[#1C1C1C] border border-[#2A2A2A] rounded-lg px-3 py-2.5 text-xs text-white placeholder-zinc-500 font-mono focus:outline-hidden focus:border-[#00E676]"
-                />
-              </div>
-
-              {/* Transaction ID from SMS */}
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                  Transaction ID from SMS (e.g. 1234567890) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 1928482012 or MP240108..."
-                  value={txnId}
-                  onChange={(e) => setTxnId(e.target.value)}
-                  className="w-full bg-[#1C1C1C] border border-[#2A2A2A] rounded-lg px-3 py-2.5 text-xs text-white placeholder-zinc-500 font-mono focus:outline-hidden focus:border-[#00E676]"
-                />
-                <span className="text-[10px] text-zinc-500 mt-1 block">
-                  Copy from the telecom SMS message received after sending money.
-                </span>
-              </div>
-
-              {/* Upload SMS screenshot */}
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                  Upload SMS screenshot (Optional but speeds up approval)
-                </label>
-                <div className="flex items-center gap-3">
-                  <label className="flex-1 border border-dashed border-[#2A2A2A] hover:border-[#00E676] bg-[#1C1C1C] rounded-lg p-2.5 text-center cursor-pointer transition-colors flex items-center justify-center gap-2 text-xs text-zinc-300">
-                    <Upload className="w-4 h-4 text-[#00E676]" />
-                    <span>{screenshot ? 'Replace Screenshot' : 'Upload SMS screenshot'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleScreenshotUpload}
-                      className="hidden"
-                    />
-                  </label>
-                  {screenshot && (
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#00E676] shrink-0">
-                      <img src={screenshot} alt="Preview" className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Buttons */}
-            <div className="pt-2 space-y-2">
-              <button
-                type="submit"
-                className="w-full h-[50px] rounded-lg bg-[#00E676] hover:bg-[#00C853] text-black font-extrabold text-[14px] flex items-center justify-center transition-all cursor-pointer shadow-md"
-              >
-                I have paid USh {amount.toLocaleString()}
-              </button>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full py-2 text-center text-xs text-zinc-400 hover:text-white cursor-pointer transition-colors"
-              >
+            <footer className={`flex flex-col-reverse gap-3 border-t px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${darkMode ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-white'}`}>
+              <button type="button" onClick={onClose} className={`min-h-11 rounded-lg px-4 text-sm font-semibold transition-colors ${darkMode ? 'text-zinc-400 hover:bg-zinc-900 hover:text-white' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}>
                 Cancel
               </button>
-            </div>
+              <button
+                type="submit"
+                disabled={isSubmitting || !isAuthenticated || !paymentDestinationConfigured}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#00E676] px-5 text-center text-sm font-extrabold text-black transition-colors hover:bg-[#00C853] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
+                {isSubmitting ? 'Submitting proof…' : 'Submit payment proof'}
+              </button>
+            </footer>
           </form>
         )}
-      </div>
+      </section>
     </div>
   );
 };
+
+export { MAX_SCREENSHOT_BYTES };
+export type ManualBoostPaymentNetwork = 'MTN' | 'Airtel';
+export type ManualBoostSubmissionCallback = (submission: ManualBoostSubmission) => Promise<void>;
+export type { ManualBoostPaymentModalProps };

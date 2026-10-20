@@ -1,63 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ShopLocal UG">
   <defs>
-    <!-- Background rounded gradient -->
-    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00C853" />
-      <stop offset="100%" stop-color="#008A2E" />
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0D7549" />
+      <stop offset="1" stop-color="#075D3C" />
     </linearGradient>
-    
-    <!-- Metallic Shield / Bag Highlights -->
-    <linearGradient id="bag-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="100%" stop-color="#F0FFF4" />
+    <linearGradient id="bag" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFDF6" />
+      <stop offset="1" stop-color="#F3E9CE" />
     </linearGradient>
-
-    <linearGradient id="ug-orange" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF9E00" />
-      <stop offset="100%" stop-color="#FF6200" />
-    </linearGradient>
-
-    <filter id="app-shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.25" />
-    </filter>
-
-    <filter id="inner-glow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#004D1A" flood-opacity="0.3" />
-    </filter>
   </defs>
-
-  <!-- Base Icon Squircle (iOS / Android Modern Adaptive Shape) -->
-  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg-grad)" filter="url(#app-shadow)" />
-
-  <!-- Subtle Top Gloss Arc -->
-  <path d="M 40 128 C 40 56, 96 40, 160 36 C 240 32, 380 36, 472 128 C 472 200, 360 160, 240 160 C 120 160, 40 180, 40 128 Z" fill="#FFFFFF" opacity="0.12" />
-
-  <!-- Shopping Bag / Marketplace Architecture Body -->
-  <g filter="url(#inner-glow)">
-    <!-- Bag Handle -->
-    <path d="M 186 200 C 186 130, 326 130, 326 200" fill="none" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" />
-    
-    <!-- Bag Main Body -->
-    <rect x="120" y="184" width="272" height="236" rx="42" fill="url(#bag-grad)" />
-
-    <!-- Center Crest: Uganda Verified Badge Star & Check -->
-    <!-- Gold / Orange Ribbon -->
-    <circle cx="256" cy="302" r="64" fill="url(#ug-orange)" />
-    
-    <!-- Verified Checkmark in Gold Circle -->
-    <path d="M 230 302 L 248 322 L 284 282" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
-  </g>
-
-  <!-- UG Flag Indicator Pill in Bottom Right -->
-  <g transform="translate(320, 345)">
-    <!-- Pill Background -->
-    <rect x="0" y="0" width="105" height="48" rx="24" fill="#000000" stroke="#FFCC00" stroke-width="4" />
-    
-    <!-- UG Stripes: Black, Yellow, Red mini dot -->
-    <circle cx="26" cy="24" r="9" fill="#FFCC00" />
-    <circle cx="26" cy="24" r="5" fill="#E60000" />
-
-    <!-- UG Letters -->
-    <text x="50" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="900" fill="#FFFFFF" letter-spacing="1">UG</text>
-  </g>
+  <rect width="512" height="512" rx="112" fill="url(#background)" />
+  <path d="M192 202v-34a64 64 0 0 1 128 0v34" fill="none" stroke="#FFF9E9" stroke-linecap="round" stroke-width="23" />
+  <path d="M146 190h220c10 0 18 8 17 18l-20 190c-1 11-10 18-20 18H169c-10 0-19-7-20-18l-20-190c-1-10 7-18 17-18Z" fill="url(#bag)" />
+  <path d="M256 239c-29 0-52 23-52 52 0 39 52 91 52 91s52-52 52-91c0-29-23-52-52-52Z" fill="#0D7549" />
+  <circle cx="256" cy="291" r="15" fill="#FFF9E9" />
+  <path d="M220 377h72v7h-72z" fill="#171717" />
+  <path d="M220 384h72v7h-72z" fill="#F3C52B" />
+  <path d="M220 391h72v7h-72z" fill="#D72638" />
 </svg>

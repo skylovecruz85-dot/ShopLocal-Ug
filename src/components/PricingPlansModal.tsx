@@ -14,7 +14,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { formatUGX } from '../utils/helpers';
-import { MARKETPLACE_PRICING_PLANS, PricingPlan } from '../data/mockData';
+import { MARKETPLACE_PRICING_PLANS, PricingPlan } from '../data/catalog';
 
 interface PricingPlansModalProps {
   onClose: () => void;
@@ -108,7 +108,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
                   <span>ShopLocal Ug Ad Packs & Boosts</span>
                 </h3>
                 <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Scale your sales across Uganda with MTN MoMo & Airtel Money
+                  Try seller packages and boosts in this browser-only subscription.
                 </p>
               </div>
             </div>
@@ -138,7 +138,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
               }`}
             >
               <Flame className="w-3.5 h-3.5 text-white fill-white" />
-              <span>ShopLocal Promo Options</span>
+              <span>Ad Boosts</span>
             </button>
 
             <button
@@ -165,7 +165,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
                 Choose Your Seller Ad Allowance
               </h4>
               <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Instant activation with Ugandan telecom mobile money rails.
+                Sample pricing only; selecting a plan updates this preview in your browser.
               </p>
             </div>
 
@@ -241,7 +241,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
           <div className="p-4 sm:p-5 space-y-3.5 bg-[#121212] text-white animate-in fade-in max-h-[82vh] overflow-y-auto">
             <div className="pb-0.5">
               <p className="text-[12px] text-[#9E9E9E]">
-                Choose a promotion type for your ad to post it
+                Choose a boost, pay directly by mobile money, then submit your SMS proof for private admin review.
               </p>
               {selectedBoostListingTitle && (
                 <p className="text-[11px] text-[#00C853] font-medium mt-1 truncate">
@@ -261,10 +261,10 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
             >
               <div>
                 <h5 className="text-[14px] font-bold text-white leading-tight">
-                  TOP promo
+TOP placement
                 </h5>
                 <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
-                  Best choice if you need one fast sale. Your ad will be at the top of search results and get 13X more traffic
+                  Preview a top-of-search placement; performance is not measured in this subscription.
                 </p>
               </div>
 
@@ -327,10 +327,10 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
             >
               <div>
                 <h5 className="text-[14px] font-bold text-white leading-tight">
-                  Boost Premium promo
+                  Boost Premium
                 </h5>
                 <p className="text-[11px] text-[#B0B0B0] mt-1 leading-snug">
-                  Best choice if you want to post more ads. Allows up to 40 ads in Repair & Construction and gives 5X more traffic for all of them
+                  Preview a featured placement; no traffic or conversion metrics are tracked in this subscription.
                 </p>
               </div>
 
@@ -369,9 +369,9 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
                       duration: selectedPromo === 'TOP' ? (topDuration === 7 ? 'Weekly' : 'Monthly') : 'Monthly',
                       priceUGX: price,
                       features: [
-                        selectedPromo === 'TOP' ? 'Top of Search Results (13X Traffic)' : 'Up to 40 Ads in Repair & Construction (5X Traffic)',
-                        'Instant MTN MoMo / Airtel Money Escrow Protection',
-                        'Verified Merchant Badge Priority'
+selectedPromo === 'TOP' ? 'Top-of-search placement preview' : 'Featured placement preview',
+      'Simulated checkout only; no funds or escrow',
+      'Sample badge styling; identity is not checked'
                       ],
                       badge: selectedPromo === 'TOP' ? 'TOP' : 'PREMIUM'
                     });
@@ -379,7 +379,7 @@ export const PricingPlansModal: React.FC<PricingPlansModalProps> = ({
                 }}
                 className="w-full h-[50px] rounded-[8px] bg-[#00E676] hover:bg-[#00C853] text-black font-bold text-[14px] flex items-center justify-center transition-all cursor-pointer shadow-md"
               >
-                Buy promo &amp; Post ad (USh {selectedPromo === 'TOP' ? (topDuration === 7 ? '9,500' : '21,500') : '28,550'})
+                Preview boost &amp; post ad (USh {selectedPromo === 'TOP' ? (topDuration === 7 ? '9,500' : '21,500') : '28,550'})
               </button>
 
               <button

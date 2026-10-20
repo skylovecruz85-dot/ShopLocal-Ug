@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import { Listing, User, UserPurchase } from '../types';
 import { formatUGX } from '../utils/helpers';
-import { INITIAL_USER_PURCHASES } from '../data/mockData';
 import { isOwnerUser } from '../config/paymentConfig';
 
 interface SellerDashboardProps {
@@ -47,6 +46,7 @@ interface SellerDashboardProps {
   onOpenAdminBoostOrders?: () => void;
   pendingBoostOrdersCount?: number;
   onToggleSold: (listingId: string) => void;
+  onRenewListing: (listingId: string) => void;
   onBoostListing: (listingId: string) => void;
   onDeleteListing: (listingId: string) => void;
   onUpdateAvatar?: (newAvatar: string) => void;
@@ -67,6 +67,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   onOpenAdminBoostOrders,
   pendingBoostOrdersCount = 0,
   onToggleSold,
+  onRenewListing,
   onBoostListing,
   onDeleteListing,
   onUpdateAvatar,
@@ -77,18 +78,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Main 3 navigation tabs: Ads | Profile | Settings (Purchases moved to bottom of Profile like Jiji)
   const [mainTab, setMainTab] = useState<'ads' | 'profile' | 'settings'>('ads');
   const [inventorySubTab, setInventorySubTab] = useState<'active' | 'sold'>('active');
-  const [purchases] = useState<UserPurchase[]>(() => {
-    try {
-      const saved = localStorage.getItem('shoplocal_user_purchases');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= 3) return parsed;
-      }
-    } catch {
-      // fallback
-    }
-    return INITIAL_USER_PURCHASES;
-  });
+  const [purchases] = useState<UserPurchase[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,7 +127,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Business profile name - only visible to the owner
   const isOwner = isOwnerUser(currentUser);
   const profileName = isOwner 
-    ? (currentUser.businessName || "Prime Sanitary Centre")
+    ? (currentUser.businessName || "Account Local Shop")
     : (currentUser.businessName || currentUser.name);
 
   return (
@@ -264,7 +254,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                 <p className="text-[11px] text-slate-500">
                   {currentUser.isProMember 
-                    ? 'You have unlimited lifetime classifieds active on your verified merchant account.'
+                    ? 'Account PRO is enabled in this browser; no payment was processed.'
                     : `You have ${Math.max(0, freeListingsTotal - currentUser.freeListingsUsed)} free listings remaining in your seller allowance.`}
                 </p>
 
@@ -391,7 +381,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       No {inventorySubTab} ads found. Tap "Post New Ad" to list an item for free!
                     </div>
                   ) : (
-                    (inventorySubTab === 'active' ? activeItems : soldItems).map((listing) => (
+                    (inventorySubTab === 'active' ? activeItems : soldItems).map((listing) => {
+                      const listedAt = Date.parse(listing.renewedAt || listing.createdAt || listing.updatedAt);
+                      const renewalDueAt = listedAt + 30 * 24 * 60 * 60 * 1000;
+                      const renewalDue = Number.isFinite(listedAt) && Date.now() >= renewalDueAt;
+                      const daysUntilRenewal = Number.isFinite(listedAt)
+                        ? Math.max(0, Math.ceil((renewalDueAt - Date.now()) / (24 * 60 * 60 * 1000)))
+                        : null;
+                      return (
                       <div
                         key={listing.id}
                         className="p-3 bg-white rounded-xl border border-[#EEEEEE] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
@@ -409,6 +406,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                             <p className="text-xs font-extrabold text-[#00B53F] mt-0.5">
                               {formatUGX(listing.price, listing.isNegotiable)}
                             </p>
+                            {!listing.isSold && (
+                              <p className={`mt-1 text-[10px] font-semibold ${renewalDue ? 'text-amber-700' : 'text-slate-400'}`}>
+                                {renewalDue
+                                  ? 'Renewal due'
+                                  : daysUntilRenewal === null
+                                    ? 'Renewal date unavailable'
+                                    : `Renews in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'}`}
+                              </p>
+                            )}
                             <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 flex-wrap">
                               <span>{listing.district}</span>
                               <span>•</span>
@@ -426,6 +432,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                           >
                             {listing.isSold ? 'Relist' : 'Mark Sold'}
                           </button>
+
+                          {renewalDue && !listing.isSold && (
+                            <button
+                              type="button"
+                              onClick={() => onRenewListing(listing.id)}
+                              aria-label={`Renew ${listing.title}`}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 cursor-pointer transition-colors"
+                            >
+                              Renew
+                            </button>
+                          )}
 
                           {!listing.isSold && (
                             <button
@@ -446,7 +463,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                           </button>
                         </div>
                       </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -459,7 +477,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               {/* 5. FIX USER PROFILE CARD:
                   - Header: White
                   - Logo centered 80px circle with green border
-                  - Name "Prime Sanitary Centre" black 18px bold + Verified yellow badge
+                  - Account Local Shop profile title and sample badge
                   - Contact: phone + email in one line grey 12px, center
                   - "Upload Photo" button white with green border, not grey
                   - Account Credentials: label grey left, value black right bold
@@ -491,7 +509,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </button>
                 </div>
 
-                {/* Name "Prime Sanitary Centre" black 18px bold + Verified yellow badge */}
+                {/* Account Local Shop profile title and sample badge */}
                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
                   <h3 className="font-display font-bold text-[18px] text-[#222222]">
                     {profileName}
@@ -555,15 +573,13 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </div>
 
                   <div className="flex justify-between items-center py-1 border-b border-[#EEEEEE] text-xs">
-                    <span className="text-[#757575] font-medium">National ID (NIN)</span>
-                    <span className="text-[#00B53F] font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> CM98024104K8LA (Verified)
-                    </span>
+  <span className="text-[#757575] font-medium">Identity checks</span>
+                    <span className="text-slate-500 font-bold">Not connected in account</span>
                   </div>
 
                   <div className="flex justify-between items-center py-1 text-xs">
                     <span className="text-[#757575] font-medium">Account Status</span>
-                    <span className="text-[#00B53F] font-bold">Verified Business Merchant</span>
+                    <span className="text-slate-500 font-bold">Account profile</span>
                   </div>
                 </div>
 
@@ -573,7 +589,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                       Merchant Services & Tools
                     </h4>
-                    <span className="text-[10px] text-slate-400 font-semibold">12 Services</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">{onOpenAdminBoostOrders ? '12 Services' : '11 Services'}</span>
                   </div>
 
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 text-center">
@@ -634,8 +650,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       <div className="w-9 h-9 rounded-full bg-emerald-50 text-[#00B53F] flex items-center justify-center">
                         <ShieldCheck className="w-4 h-4 text-[#00B53F]" />
                       </div>
-                      <span className="text-[11px] font-bold text-[#222222]">NIN ID</span>
-                      <span className="text-[9px] text-[#00B53F] font-bold">Verified</span>
+<span className="text-[11px] font-bold text-[#222222]">Identity check</span>
+  <span className="text-[9px] text-slate-500 font-bold">Account only</span>
                     </div>
 
                     {/* 6. PRO Badge */}
@@ -697,23 +713,24 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       <span className="text-[9px] text-slate-400">Uganda Rules</span>
                     </div>
 
-                    {/* 11. Admin Boost Orders (Pending & Verification) */}
-                    <button
-                      type="button"
-                      onClick={onOpenAdminBoostOrders}
-                      className="bg-white rounded-[12px] p-2.5 sm:p-3 border border-[#EEEEEE] shadow-2xs hover:border-[#00E676] transition-all flex flex-col items-center justify-center gap-1 cursor-pointer group relative"
-                    >
-                      {pendingBoostOrdersCount > 0 && (
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                      )}
-                      <div className="w-9 h-9 rounded-full bg-emerald-50 text-[#00E676] flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <Flame className="w-4 h-4 text-[#00B53F]" />
-                      </div>
-                      <span className="text-[11px] font-bold text-[#222222]">Admin Boosts</span>
-                      <span className="text-[9px] text-[#00B53F] font-bold">
-                        {pendingBoostOrdersCount > 0 ? `${pendingBoostOrdersCount} Pending` : 'Verify Orders'}
-                      </span>
-                    </button>
+                    {onOpenAdminBoostOrders && (
+                      <button
+                        type="button"
+                        onClick={onOpenAdminBoostOrders}
+                        className="bg-white rounded-[12px] p-2.5 sm:p-3 border border-[#EEEEEE] shadow-2xs hover:border-[#00E676] transition-all flex flex-col items-center justify-center gap-1 cursor-pointer group relative"
+                      >
+                        {pendingBoostOrdersCount > 0 && (
+                          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        )}
+                        <div className="w-9 h-9 rounded-full bg-emerald-50 text-[#00E676] flex items-center justify-center group-hover:scale-105 transition-transform">
+                          <Flame className="w-4 h-4 text-[#00B53F]" />
+                        </div>
+                        <span className="text-[11px] font-bold text-[#222222]">Admin Center</span>
+                        <span className="text-[9px] text-[#00B53F] font-bold">
+                          {pendingBoostOrdersCount > 0 ? `${pendingBoostOrdersCount} Pending` : 'Payment reviews'}
+                        </span>
+                      </button>
+                    )}
 
                     {/* 12. Settings */}
                     <button
@@ -830,7 +847,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       Theme & Appearance
                     </h5>
                     <p className="text-[11px] text-[#757575]">
-                      High-visibility light theme
+                      Choose the light or dark theme for this device
                     </p>
                   </div>
                 </div>
@@ -839,19 +856,23 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   <button
                     type="button"
                     onClick={onToggleDarkMode}
+                    aria-pressed={darkMode}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                      !darkMode
-                        ? 'bg-emerald-50 text-[#00B53F] border border-emerald-200'
-                        : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                      darkMode
+                        ? 'bg-slate-900 text-slate-100 border border-slate-700 hover:bg-slate-800'
+                        : 'bg-emerald-50 text-[#00B53F] border border-emerald-200 hover:bg-emerald-100'
                     }`}
                   >
-                    {!darkMode ? (
+                    {darkMode ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-[#00B53F]" />
-                        <span>Light Mode Active</span>
+                        <Sun className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Switch to light</span>
                       </>
                     ) : (
-                      <span>Switch to Light</span>
+                      <>
+                        <Moon className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Switch to dark</span>
+                      </>
                     )}
                   </button>
                 )}
@@ -942,7 +963,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     <div>
                       <div className="flex items-center gap-2">
                         <h5 className="font-bold text-[14px] text-[#222222]">
-                          Admin: Boost Orders
+                          Private Admin Center
                         </h5>
                         {pendingBoostOrdersCount > 0 && (
                           <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 text-[10px] font-bold">
@@ -951,7 +972,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                         )}
                       </div>
                       <p className="text-[11px] text-[#757575]">
-                        Verify MoMo/Airtel SMS transactions &amp; set ads TOP
+                        Review payment submissions and private SMS proofs
                       </p>
                     </div>
                   </div>

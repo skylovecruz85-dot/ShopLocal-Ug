@@ -75,6 +75,7 @@ export interface VerificationApplication {
 export interface User {
   id: string;
   name: string;
+  username?: string;
   businessName?: string;
   phone: string;
   email: string;
@@ -147,6 +148,7 @@ export interface Listing {
   type?: string;
   featuredUntil?: string;
   boostedUntil?: string;
+  renewedAt?: string;
 }
 
 export interface BoostOrder {
@@ -154,14 +156,16 @@ export interface BoostOrder {
   adTitle: string;
   userPhone: string;
   plan: '7 days' | '30 days' | 'Boost Premium';
+  durationDays: number;
   amount: 9500 | 21500 | 28550 | number;
   network: 'MTN' | 'Airtel';
   payerNumber: string;
   txnId: string;
-  screenshot?: string;
-  time: string;
+  hasScreenshot: boolean;
+  time: string | null;
+  reviewedAt?: string | null;
   status: 'Pending' | 'Approved' | 'Declined';
-  listingId?: string;
+  listingId: string;
 }
 
 export interface ChatMessage {

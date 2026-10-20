@@ -18,7 +18,7 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { CategoryId, Category } from '../types';
-import { CATEGORIES } from '../data/mockData';
+import { CATEGORIES } from '../data/catalog';
 
 interface CategorySidebarProps {
   selectedCategory: CategoryId | 'all';

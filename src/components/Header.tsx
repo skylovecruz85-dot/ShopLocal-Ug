@@ -8,20 +8,21 @@ import {
   Crown, 
   User as UserIcon, 
   Bell, 
-  ShoppingBag, 
   Moon, 
   Sun, 
   ChevronDown, 
   LogOut, 
   Settings,
-  Flame
+  Flame,
+  UserPlus
 } from 'lucide-react';
 import { User } from '../types';
-import { UGANDA_DISTRICTS } from '../data/mockData';
+import { UGANDA_DISTRICTS } from '../data/catalog';
 import { isOwnerUser } from '../config/paymentConfig';
 
 interface HeaderProps {
   currentUser: User;
+  isaccountAuthenticated: boolean;
   selectedDistrict: string;
   onSelectDistrict: (district: string) => void;
   searchQuery: string;
@@ -60,6 +61,7 @@ const TRENDING_TAGS = [
 
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
+  isaccountAuthenticated,
   selectedDistrict,
   onSelectDistrict,
   searchQuery,
@@ -95,9 +97,14 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={(e) => { e.preventDefault(); onSearchChange(''); onSelectDistrict('All Uganda'); }}
               className="flex items-center gap-2 group cursor-pointer"
             >
-              <div className="w-9 h-9 rounded-xl bg-[#00B53F] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
-                <ShoppingBag className="w-5 h-5 text-white stroke-[2.5]" />
-              </div>
+              <img
+                src="/icon.svg"
+                alt=""
+                aria-hidden="true"
+                width={36}
+                height={36}
+                className="w-9 h-9 rounded-xl shadow-xs group-hover:scale-105 transition-transform"
+              />
               <div className="flex flex-col">
                 <div className="flex items-baseline gap-1">
                   <span className="font-display font-black text-xl sm:text-2xl tracking-tight text-[#00B53F]">
@@ -107,9 +114,12 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="text-[10px] font-black uppercase tracking-wider bg-[#00B53F] text-white px-1 py-0.2 rounded font-mono">
                     UG
                   </span>
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-amber-900">
+                    Account
+                  </span>
                 </div>
                 <span className="text-[9px] text-[#757575] font-semibold tracking-tight -mt-0.5 hidden sm:block">
-                  Uganda's Verified Marketplace
+                  Interactive marketplace preview
                 </span>
               </div>
             </a>
@@ -199,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
               {mobileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-72 rounded-2xl shadow-xl border border-slate-200 bg-white text-slate-800 py-2 z-50">
                   <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-[11px] text-slate-500 font-medium">Signed in as</p>
+                    <p className="text-[11px] text-slate-500 font-medium">{isaccountAuthenticated ? 'account phone account' : 'Guest account'}</p>
                     <p className="text-xs font-bold truncate text-[#222222]">{currentUser.name}</p>
                     <p className="text-[11px] text-slate-500">{currentUser.phone}</p>
                   </div>
@@ -217,6 +227,16 @@ export const Header: React.FC<HeaderProps> = ({
                         {currentUser.freeListingsUsed} Ads
                       </span>
                     </button>
+
+                    {!isaccountAuthenticated && (
+                      <button
+                        onClick={() => { onOpenSignUp(); setMobileMenuOpen(false); }}
+                        className="w-full px-4 py-2 text-left text-xs font-semibold flex items-center gap-2 cursor-pointer hover:bg-slate-50"
+                      >
+                        <UserPlus className="w-4 h-4 text-[#00B53F]" />
+                        <span>Sign in or create account</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => { onOpenProfile(currentUser); setMobileMenuOpen(false); }}

@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import useSWR from 'swr';
+
+const authClient = { currentUser: null as { uid: string; phoneNumber?: string; getIdToken: () => Promise<string> } | null };
+const signOut = async () => { await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include' }); };
+
 import { 
   Filter, 
   MapPin, 
@@ -46,7 +51,7 @@ import {
   CATEGORIES,
   MARKETPLACE_PRICING_PLANS,
   PricingPlan
-} from './data/mockData';
+} from './data/catalog';
 
 import { playNotificationSound } from './utils/audio';
 
@@ -59,12 +64,12 @@ import { JijiSafetyBanner } from './components/JijiSafetyBanner';
 import { ListingCard } from './components/ListingCard';
 import { ListingDetailModal } from './components/ListingDetailModal';
 import { PostAdModal } from './components/PostAdModal';
-import { PromoSelection } from './components/PostAdPromoModal';
+import { ManualBoostPaymentModal, type ManualBoostPaymentConfig, type ManualBoostSubmission } from './components/ManualBoostPaymentModal';
 import { ChatModal } from './components/ChatModal';
 import { MomoPaymentModal } from './components/MomoPaymentModal';
 import { PricingPlansModal } from './components/PricingPlansModal';
-import { ManualBoostPaymentModal } from './components/ManualBoostPaymentModal';
 import { AdminBoostOrdersModal } from './components/AdminBoostOrdersModal';
+import AdminReviewPanel from './components/AdminReviewPanel';
 import { BiometricAuthModal } from './components/BiometricAuthModal';
 import { SellerDashboard } from './components/SellerDashboard';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -77,88 +82,40 @@ import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { RecentlyViewed } from './components/RecentlyViewed';
 
 export default function App() {
-  // Dark mode state - explicitly force light mode default on load
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('shoplocal_theme');
-    if (saved === 'dark') {
-      localStorage.setItem('shoplocal_theme', 'light');
-    }
-    return false;
-  });
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('shoplocal_theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('shoplocal_theme', 'light');
-    }
+    document.documentElement.classList.toggle('dark', darkMode);
+    document.body.style.colorScheme = darkMode ? 'dark' : 'light';
   }, [darkMode]);
 
-  // Persistence states with safe fallback to initial mock data if empty
-  const [listings, setListings] = useState<Listing[]>(() => {
-    const saved = localStorage.getItem('shoplocal_listings');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {
-        // Fallback to initial
-      }
-    }
-    return INITIAL_LISTINGS;
-  });
+  const [listings, setListings] = useState<Listing[]>([]);
+  const { data: apiListings } = useSWR<Listing[]>('/api/marketplace/listings?limit=100', async (url) => {
+    const response = await fetch(url, { credentials: 'include' });
+    if (!response.ok) throw new Error('Listings could not be loaded.');
+    const payload = await response.json() as { data?: Array<Partial<Listing> & { id: string; title: string; price: number; district: string; category: CategoryId; description: string; sellerId?: string; userId?: string }> };
+    return (payload.data ?? []).map((item) => ({
+      ...item,
+      tags: item.tags ?? [],
+      locationDetails: item.locationDetails ?? item.district,
+      subcategory: item.subcategory ?? '',
+      seller: item.seller ?? { id: item.sellerId ?? item.userId ?? '', name: 'ShopLocal seller', username: 'seller', phone: '', email: '', avatar: '', district: item.district, rating: 0, reviewCount: 0, isVerified: false, verificationStatus: 'UNVERIFIED', isPhoneVerified: false, isProMember: false, freeListingsUsed: 0, freeListingsTotal: 18, hasBiometrics: false, joinedDate: item.createdAt ?? new Date().toISOString(), responseTime: 'New seller', badges: [], activePlan: 'FREE_18', completedSales: [] },
+    })) as Listing[];
+  }, { revalidateOnFocus: false });
 
-  const [currentUser, setCurrentUser] = useState<User>(() => {
-    const saved = localStorage.getItem('shoplocal_current_user');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return { 
-          ...INITIAL_CURRENT_USER, 
-          ...parsed, 
-          businessName: parsed.businessName || 'Prime Sanitary Centre',
-          email: parsed.email || 'skylovecruz85@gmail.com' 
-        };
-      } catch (e) {}
-    }
-    return INITIAL_CURRENT_USER;
-  });
+  useEffect(() => {
+    if (apiListings) setListings(apiListings);
+  }, [apiListings]);
 
-  const [conversations, setConversations] = useState<Conversation[]>(() => {
-    const saved = localStorage.getItem('shoplocal_conversations');
-    return saved ? JSON.parse(saved) : INITIAL_CONVERSATIONS;
-  });
+  const [currentUser, setCurrentUser] = useState<User>(INITIAL_CURRENT_USER);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const authClientReady = true;
 
-  const [reviews, setReviews] = useState<Review[]>(() => {
-    const saved = localStorage.getItem('shoplocal_reviews');
-    return saved ? JSON.parse(saved) : INITIAL_REVIEWS;
-  });
-
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    const saved = localStorage.getItem('shoplocal_favorites');
-    return saved ? JSON.parse(saved) : ['list_001', 'list_003'];
-  });
-
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem('shoplocal_notifications');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: 'notif_welcome',
-        title: 'Welcome to ShopLocal Ug! 🇺🇬',
-        body: 'Enjoy 18 free listings for small business owners and instant MTN MoMo / Airtel Money payouts.',
-        type: 'system',
-        timestamp: new Date().toISOString(),
-        read: false,
-      }
-    ];
-  });
-
-  const [recentlyViewed, setRecentlyViewed] = useState<Listing[]>(() => {
-    const saved = localStorage.getItem('shoplocal_recently_viewed');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Listing[]>([]);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -190,45 +147,9 @@ export default function App() {
   const [viewProfileUser, setViewProfileUser] = useState<User | null>(null);
   const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
 
-  // Manual Boost Orders state (Admin verification & User payment)
-  const [boostOrders, setBoostOrders] = useState<BoostOrder[]>(() => {
-    const saved = localStorage.getItem('shoplocal_boost_orders');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {}
-    }
-    return [
-      {
-        id: 'boost_seed_01',
-        adTitle: 'Toyota Harrier 2018 Pearl White (Mint Condition)',
-        userPhone: '0772849201',
-        plan: '7 days',
-        amount: 9500,
-        network: 'MTN',
-        payerNumber: '0772849201',
-        txnId: '1948201840',
-        time: new Date(Date.now() - 3600000).toISOString(),
-        status: 'Pending',
-        listingId: 'list_001',
-      }
-    ];
-  });
-
   const [isAdminBoostOrdersOpen, setIsAdminBoostOrdersOpen] = useState(false);
-  const [manualBoostModalConfig, setManualBoostModalConfig] = useState<{
-    isOpen: boolean;
-    amount: 9500 | 21500 | 28550 | number;
-    planName: '7 days' | '30 days' | 'Boost Premium';
-    adTitle: string;
-    listingId?: string;
-  }>({
-    isOpen: false,
-    amount: 9500,
-    planName: '7 days',
-    adTitle: '',
-  });
+  const [manualBoostConfig, setManualBoostConfig] = useState<ManualBoostPaymentConfig | null>(null);
+  const [reviewingBoostOrderId, setReviewingBoostOrderId] = useState<string | null>(null);
 
   // MoMo payment modal state
   const [momoModalConfig, setMomoModalConfig] = useState<{
@@ -238,42 +159,71 @@ export default function App() {
     itemTitle?: string;
     listingId?: string;
     sellerName?: string;
-    sellerMtnLine?: string;
-    sellerAirtelLine?: string;
   }>({
     isOpen: false,
     amount: 10000,
     purpose: 'BOOST_LISTING',
   });
 
-  // Local storage synchronization
-  useEffect(() => {
-    localStorage.setItem('shoplocal_listings', JSON.stringify(listings));
-  }, [listings]);
+  const boostOrdersKey = authClientReady && authUserId
+    ? ['/api/marketplace/boost-orders', authUserId] as const
+    : null;
+  const {
+    data: boostOrdersData,
+    error: boostOrdersError,
+    isLoading: isBoostOrdersLoading,
+    mutate: mutateBoostOrders,
+  } = useSWR<{ orders: BoostOrder[]; canReview: boolean }, Error>(
+    boostOrdersKey,
+    async ([url, uid]) => {
+      if (!uid) throw new Error('Sign in again to load payment submissions.');
+      const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
+      const result = await response.json().catch(() => null) as { data?: BoostOrder[]; error?: string } | null;
+      if (!response.ok) throw new Error(result?.error || 'Payment submissions could not be loaded.');
+      return { orders: result?.data ?? [], canReview: false };
+    },
+    { revalidateOnFocus: true, revalidateOnReconnect: true, shouldRetryOnError: false },
+  );
+  const boostOrders = boostOrdersData?.orders ?? [];
+  const canReviewBoostOrders = boostOrdersData?.canReview === true;
 
   useEffect(() => {
-    localStorage.setItem('shoplocal_current_user', JSON.stringify(currentUser));
-  }, [currentUser]);
+    void fetch('/api/auth/get-session', { credentials: 'include' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((session: { user?: { id: string; name: string; email: string } } | null) => {
+        if (!session?.user) return;
+        return fetch('/api/marketplace/profile', { credentials: 'include' });
+      })
+      .then((response) => response?.ok ? response.json() : null)
+      .then((payload: { data?: User } | null) => {
+        if (payload?.data) { setCurrentUser(payload.data); setIsSignUpModalOpen(false); }
+      })
+      .finally(() => undefined);
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('shoplocal_conversations', JSON.stringify(conversations));
-  }, [conversations]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_reviews', JSON.stringify(reviews));
-  }, [reviews]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_boost_orders', JSON.stringify(boostOrders));
-  }, [boostOrders]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_favorites', JSON.stringify(favorites));
-  }, [favorites]);
-
-  useEffect(() => {
-    localStorage.setItem('shoplocal_notifications', JSON.stringify(notifications));
-  }, [notifications]);
+    if (!authUserId) return;
+    const loadUserData = async () => {
+      const [favoriteResponse, notificationResponse, conversationResponse] = await Promise.all([
+        fetch('/api/marketplace/favorites', { credentials: 'include' }),
+        fetch('/api/marketplace/notifications', { credentials: 'include' }),
+        fetch('/api/marketplace/conversations', { credentials: 'include' }),
+      ]);
+      if (favoriteResponse.ok) {
+        const payload = await favoriteResponse.json() as { data?: Array<{ listingId: string }> };
+        setFavorites((payload.data ?? []).map((favorite) => favorite.listingId));
+      }
+      if (notificationResponse.ok) {
+        const payload = await notificationResponse.json() as { data?: AppNotification[] };
+        setNotifications(payload.data ?? []);
+      }
+      if (conversationResponse.ok) {
+        const payload = await conversationResponse.json() as { data?: Conversation[] };
+        setConversations(payload.data ?? []);
+      }
+    };
+    void loadUserData();
+  }, [authUserId]);
 
   // Counts
   const unreadMessagesCount = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
@@ -306,7 +256,7 @@ export default function App() {
       return false;
     }
 
-    // Verified sellers filter (either toggle or feed tab)
+    // Sample badge filter (either toggle or feed tab)
     if ((verifiedOnly || feedTab === 'verified') && !item.seller.isVerified) {
       return false;
     }
@@ -353,13 +303,17 @@ export default function App() {
   });
 
   // Favorite toggle
-  const handleToggleFavorite = (id: string, e: React.MouseEvent) => {
+  const handleToggleFavorite = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (favorites.includes(id)) {
-      setFavorites(favorites.filter(f => f !== id));
-    } else {
-      setFavorites([...favorites, id]);
-    }
+    const isSaved = favorites.includes(id);
+    setFavorites((current) => isSaved ? current.filter((favorite) => favorite !== id) : [...current, id]);
+    const response = await fetch(`/api/marketplace/favorites${isSaved ? `?listingId=${encodeURIComponent(id)}` : ''}`, {
+      method: isSaved ? 'DELETE' : 'POST',
+      credentials: 'include',
+      headers: isSaved ? undefined : { 'Content-Type': 'application/json' },
+      body: isSaved ? undefined : JSON.stringify({ listingId: id }),
+    });
+    if (!response.ok) setFavorites((current) => isSaved ? [...current, id] : current.filter((favorite) => favorite !== id));
   };
 
   // Push notification dispatcher
@@ -373,7 +327,7 @@ export default function App() {
       try {
         new Notification(newNotif.title, {
           body: newNotif.body,
-          icon: '/favicon.ico',
+              icon: '/icon.svg',
         });
       } catch (e) {
         // Fallback silently if unsupported in frame
@@ -401,52 +355,30 @@ export default function App() {
   };
 
   // Open Chat from Listing
-  const handleStartChatWithSeller = (listing: Listing, e?: React.MouseEvent) => {
+  const handleStartChatWithSeller = async (listing: Listing, e?: React.MouseEvent) => {
     e?.stopPropagation();
-
+    
     let existingConv = conversations.find(
       c => c.listingId === listing.id && (c.buyerId === currentUser.id || c.sellerId === currentUser.id)
     );
-
     if (!existingConv) {
-      const newConv: Conversation = {
-        id: 'conv_' + Date.now(),
-        listingId: listing.id,
-        listingTitle: listing.title,
-        listingPrice: listing.price,
-        listingImage: listing.images[0],
-        buyerId: currentUser.id,
-        buyerName: currentUser.name,
-        buyerAvatar: currentUser.avatar,
-        sellerId: listing.seller.id,
-        sellerName: listing.seller.name,
-        sellerAvatar: listing.seller.avatar,
-        lastMessage: 'Is this item still available?',
-        lastTimestamp: new Date().toISOString(),
-        unreadCount: 0,
-        messages: [
-          {
-            id: 'msg_' + Date.now(),
-            senderId: currentUser.id,
-            senderName: currentUser.name,
-            recipientId: listing.seller.id,
-            text: `Hello ${listing.seller.name}, I am interested in "${listing.title}". Is it still available in ${listing.district}?`,
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      };
-
-      setConversations([newConv, ...conversations]);
-      existingConv = newConv;
+      const response = await fetch('/api/marketplace/conversations', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ otherUserId: listing.seller.id, listingId: listing.id }) });
+      if (response.ok) {
+        const payload = await response.json() as { data?: { id: string } };
+        if (payload.data?.id) existingConv = { id: payload.data.id, listingId: listing.id, listingTitle: listing.title, listingPrice: listing.price, listingImage: listing.images[0], buyerId: currentUser.id, buyerName: currentUser.name, buyerAvatar: currentUser.avatar, sellerId: listing.seller.id, sellerName: listing.seller.name, sellerAvatar: listing.seller.avatar, lastMessage: '', lastTimestamp: new Date().toISOString(), unreadCount: 0, messages: [] };
+      }
     }
 
+    if (!existingConv) return;
+    setConversations((current) => current.some((conversation) => conversation.id === existingConv?.id) ? current : [existingConv as Conversation, ...current]);
     setActiveChatConvId(existingConv.id);
     setIsChatOpen(true);
     if (selectedListing) setSelectedListing(null);
   };
 
-  // Send message in chat with simulated real-time seller response
-  const handleSendMessage = (conversationId: string, text: string, isOffer = false, offerAmount?: number) => {
+  const handleSendMessage = async (conversationId: string, text: string, isOffer = false, offerAmount?: number) => {
+    const response = await fetch('/api/marketplace/messages', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationId, body: text }) });
+    if (!response.ok) return;
     const updatedConversations = conversations.map((conv) => {
       if (conv.id === conversationId) {
         const newMsg = {
@@ -473,65 +405,7 @@ export default function App() {
 
     setConversations(updatedConversations);
 
-    // Simulate real-time response from other party
-    setTimeout(() => {
-      const targetConv = conversations.find(c => c.id === conversationId);
-      if (!targetConv) return;
 
-      const otherPartyName = targetConv.buyerId === currentUser.id ? targetConv.sellerName : targetConv.buyerName;
-      const otherPartyId = targetConv.buyerId === currentUser.id ? targetConv.sellerId : targetConv.buyerId;
-
-      let replyText = `Thanks for getting in touch! Yes, this is ready for viewing in ${targetConv.listingTitle.includes('Mbarara') ? 'Mbarara' : 'Kampala'}.`;
-      if (isOffer && offerAmount) {
-        replyText = `Thank you for your offer of UGX ${offerAmount.toLocaleString()}! I can accept this deal. You can proceed with MTN MoMo / Airtel escrow or meet at Acacia Mall.`;
-      }
-
-      const sellerReply = {
-        id: 'msg_reply_' + Date.now(),
-        senderId: otherPartyId,
-        senderName: otherPartyName,
-        recipientId: currentUser.id,
-        text: replyText,
-        timestamp: new Date().toISOString(),
-      };
-
-      setConversations(prev => prev.map(c => {
-        if (c.id === conversationId) {
-          const updatedMsgs = c.messages.map(m => {
-            if (m.isOffer && m.offerStatus === 'pending') {
-              return { ...m, offerStatus: 'accepted' as const };
-            }
-            return m;
-          });
-
-          return {
-            ...c,
-            lastMessage: replyText,
-            lastTimestamp: new Date().toISOString(),
-            messages: [...updatedMsgs, sellerReply],
-          };
-        }
-        return c;
-      }));
-
-      // Trigger actionable push alert
-      triggerPushNotification({
-        id: 'notif_reply_' + Date.now(),
-        title: `Message from ${otherPartyName}`,
-        body: replyText,
-        type: isOffer ? 'offer' : 'message',
-        timestamp: new Date().toISOString(),
-        read: false,
-        conversationId,
-        offerAmount: isOffer ? offerAmount : undefined,
-        actions: isOffer ? [
-          { label: 'View Deal', actionKey: 'reply', style: 'primary' },
-          { label: 'Pay MoMo Escrow', actionKey: 'accept_offer', style: 'primary' },
-        ] : [
-          { label: 'Reply', actionKey: 'reply', style: 'primary' },
-        ],
-      });
-    }, 1800);
   };
 
   // Action dispatcher from notification toast/modal
@@ -555,7 +429,14 @@ export default function App() {
         });
       }
     } else if (actionKey === 'decline_offer') {
-      alert('Offer was marked as declined. Buyer has been notified.');
+      triggerPushNotification({
+        id: `notif_account_offer_declined_${Date.now()}`,
+        title: 'Account offer dismissed',
+        body: 'The marketplace offer was dismissed in this browser. No buyer was contacted.',
+        type: 'offer',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
     }
   };
 
@@ -563,8 +444,8 @@ export default function App() {
   const handleSimulateInquiry = () => {
     triggerPushNotification({
       id: 'sim_inq_' + Date.now(),
-      title: 'New Buyer Inquiry from Patrick Mugisha',
-      body: 'Hello Brian! Is the living room sofa set still in stock? Can you deliver to Naalya or Kira town today?',
+      title: 'Sample buyer inquiry',
+      body: 'Is the marketplace sofa still available? This preview message does not contact a seller.',
       type: 'message',
       timestamp: new Date().toISOString(),
       read: false,
@@ -578,8 +459,8 @@ export default function App() {
   const handleSimulateOffer = () => {
     triggerPushNotification({
       id: 'sim_off_' + Date.now(),
-      title: 'Counter-Offer: UGX 1,200,000 from Grace Nabwire',
-      body: 'Buyer sent an offer of UGX 1,200,000 for your listed item. Ready for instant MTN MoMo payment.',
+  title: 'Sample counter-offer · UGX 1,200,000',
+  body: 'A marketplace buyer offer is shown for preview only. No seller was contacted and no payment can be made.',
       type: 'offer',
       timestamp: new Date().toISOString(),
       read: false,
@@ -594,10 +475,7 @@ export default function App() {
   };
 
   // Post Ad Submission (with Free 18 check & driving to promo purchases when selected)
-  const handlePostAd = (
-    newAdData: Partial<Listing>,
-    promoOption?: PromoSelection
-  ) => {
+  const handlePostAd = async (newAdData: Partial<Listing>) => {
     // Check if free 18 ads are done and user is not pro/subscribed
     if (!currentUser.isProMember && currentUser.freeListingsUsed >= currentUser.freeListingsTotal) {
       setIsPostAdOpen(false);
@@ -605,15 +483,14 @@ export default function App() {
       return;
     }
 
-    const isBoosted = !!promoOption || currentUser.isProMember;
-
+    const isBoosted = currentUser.isProMember;
     const newListing: Listing = {
-      id: 'list_' + Date.now(),
+      id: `list_account_${Date.now()}`,
       sellerId: currentUser.id,
       seller: currentUser,
-      title: newAdData.title || '',
-      description: newAdData.description || '',
-      price: newAdData.price || 0,
+      title: newAdData.title?.trim() || '',
+      description: newAdData.description?.trim() || '',
+      price: Number(newAdData.price) || 0,
       isNegotiable: newAdData.isNegotiable ?? true,
       exchangePossible: newAdData.exchangePossible ?? false,
       category: newAdData.category || 'agriculture',
@@ -621,70 +498,65 @@ export default function App() {
       condition: newAdData.condition || 'Brand New',
       district: newAdData.district || 'Kampala',
       locationDetails: newAdData.locationDetails || 'Kampala Central',
-      images: newAdData.images && newAdData.images.length > 0 ? newAdData.images : ['https://images.unsplash.com/photo-1603052875302-d376b7c0638a?auto=format&fit=crop&w=600&q=80'],
+      images: newAdData.images || [],
       views: 1,
       inquiriesCount: 0,
       isBoosted,
       isSold: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      tags: newAdData.tags || ['ShopLocalUg', 'Kampala'],
+      tags: newAdData.tags || [],
       brand: newAdData.brand,
       type: newAdData.type,
     };
 
-    setListings([newListing, ...listings]);
+    const response = await fetch('/api/marketplace/listings', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newListing.title, description: newListing.description, category: newListing.category, district: newListing.district, price: newListing.price, images: newListing.images }) });
+    if (!response.ok) { alert('Listing could not be saved. Please try again.'); return; }
+    const payload = await response.json() as { data?: { id: string } };
+    if (payload.data?.id) newListing.id = payload.data.id;
+    setListings(prev => [newListing, ...prev]);
 
     if (!currentUser.isProMember) {
-      setCurrentUser({
-        ...currentUser,
-        freeListingsUsed: currentUser.freeListingsUsed + 1,
-      });
+      setCurrentUser(prev => ({
+        ...prev,
+        freeListingsUsed: prev.freeListingsUsed + 1,
+      }));
     }
 
     setIsPostAdOpen(false);
 
-    if (promoOption) {
-      // Open Manual Boost Payment Modal directly (MTN & Airtel)
-      const promoPlanName: '7 days' | '30 days' | 'Boost Premium' = 
-        promoOption.type === 'TOP' ? (promoOption.durationDays === 7 ? '7 days' : '30 days') : 'Boost Premium';
-
-      // Set ad payment status to PENDING_PAYMENT (hidden from TOP until approved)
-      setListings(prev => prev.map(l => l.id === newListing.id ? { ...l, isBoosted: true, paymentStatus: 'PENDING_PAYMENT' } : l));
-
-      setManualBoostModalConfig({
-        isOpen: true,
-        amount: promoOption.priceUGX,
-        planName: promoPlanName,
-        adTitle: newListing.title,
-        listingId: newListing.id,
-      });
-    } else {
-      triggerPushNotification({
-        id: 'notif_post_' + Date.now(),
-        title: 'Ad Published Successfully! 🎉',
-        body: `"${newListing.title}" is now live on ShopLocal Ug. Want 13X more traffic? Activate TOP promo!`,
-        type: 'boost',
-        timestamp: new Date().toISOString(),
-        read: false,
-        actions: [
-          { label: 'TOP Promo', actionKey: 'boost', style: 'primary' },
-        ],
-      });
-    }
+    triggerPushNotification({
+      id: `notif_post_${Date.now()}`,
+      title: 'Ad posted',
+      body: `"${newListing.title}" is visible in this browser. Open Seller Studio if you want to request a paid boost.`,
+      type: 'system',
+      timestamp: new Date().toISOString(),
+      read: false,
+    });
   };
 
-  // Payment Success Handler (Boost 10k, Weekly 22ads 18k, Monthly 40ads 30k, Unlimited 65k)
-  const handlePaymentSuccess = (transaction: PaymentTransaction) => {
+  const handlePaymentSuccess = async (transaction: PaymentTransaction) => {
+    if (transaction.status !== 'COMPLETED') return;
+    if (transaction.purpose === 'ESCROW_PURCHASE' && transaction.listingId) {
+      const response = await fetch('/api/marketplace/orders', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: transaction.listingId, quantity: 1 }) });
+      if (!response.ok) { alert('Order could not be created. Please try again.'); return; }
+    }
     if (transaction.purpose === 'BOOST_LISTING') {
-      // Boost the specific listing or latest
-      const targetId = transaction.listingId || selectedBoostListing?.id || listings[0]?.id;
-      setListings(prev => prev.map(l => l.id === targetId ? { ...l, isBoosted: true } : l));
+      await fetch('/api/marketplace/boost-orders', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: transaction.listingId || selectedBoostListing?.id, plan: 'paid-boost', amount: transaction.amount, paymentReference: transaction.reference }) });
+    }
+
+    if (transaction.purpose === 'BOOST_LISTING') {
+      const targetId = transaction.listingId || selectedBoostListing?.id;
+      if (targetId) {
+        setListings(prev => prev.map(listing => listing.id === targetId ? { ...listing, isBoosted: true } : listing));
+      }
 
       triggerPushNotification({
-        id: 'notif_boost_' + Date.now(),
-        title: '🔥 Weekly Ad Boost Activated!',
-        body: `Your ad is now pinned to the top of its category with a golden badge for 7 days.`,
+        id: `notif_account_boost_${Date.now()}`,
+        title: targetId ? 'Account boost applied' : 'Account checkout simulated',
+        body: targetId
+          ? `"${transaction.itemTitle || 'Your listing'}" is marked featured in this local preview. No funds moved.`
+          : 'Choose one of your own listings to preview a boost. No payment was processed.',
         type: 'boost',
         timestamp: new Date().toISOString(),
         read: false,
@@ -696,9 +568,9 @@ export default function App() {
         activePlan: 'WEEKLY_22',
       }));
       triggerPushNotification({
-        id: 'notif_pack_' + Date.now(),
-        title: 'Weekly Seller Pack (22 Ads) Unlocked!',
-        body: '22 additional active ads have been added to your merchant allowance.',
+        id: `notif_account_pack_${Date.now()}`,
+        title: 'Account seller pack applied',
+        body: 'The preview allowance increased by 22 listings in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
         read: false,
@@ -710,9 +582,9 @@ export default function App() {
         activePlan: 'MONTHLY_40',
       }));
       triggerPushNotification({
-        id: 'notif_pack_m_' + Date.now(),
-        title: 'Monthly Growth Pack (40 Ads) Unlocked!',
-        body: '40 additional ads plus 2 free weekly boosts are now active on your account.',
+        id: `notif_account_pack_monthly_${Date.now()}`,
+        title: 'Account monthly pack applied',
+        body: 'The preview allowance increased by 40 listings in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
         read: false,
@@ -723,39 +595,34 @@ export default function App() {
         isProMember: true,
         proMemberSince: new Date().toISOString(),
         activePlan: 'UNLIMITED_65',
-        badges: [...prev.badges, 'Lifetime PRO Merchant'],
+        badges: Array.from(new Set([...prev.badges, 'Account PRO'])),
       }));
-      setListings(prev => prev.map(l => l.sellerId === currentUser.id ? { ...l, isBoosted: true } : l));
+      setListings(prev => prev.map(listing => listing.sellerId === currentUser.id ? { ...listing, isBoosted: true } : listing));
 
       triggerPushNotification({
-        id: 'notif_unlimited_' + Date.now(),
-        title: '👑 Lifetime Unlimited Pass Activated!',
-        body: 'You now enjoy unlimited lifetime ads, permanent PRO status, and priority algorithm ranking.',
+        id: `notif_account_unlimited_${Date.now()}`,
+        title: 'Account seller plan applied',
+        body: 'Preview seller features are enabled in this browser. No payment was processed.',
         type: 'payment',
         timestamp: new Date().toISOString(),
         read: false,
       });
     } else if (transaction.purpose === 'ESCROW_PURCHASE') {
-      const recipientText = transaction.recipientPhoneNumber
-        ? `Credited directly to seller line: ${transaction.recipientPhoneNumber} (${transaction.recipientName}).`
-        : 'Payment received on seller line.';
-
       triggerPushNotification({
-        id: 'notif_escrow_' + Date.now(),
-        title: 'Payment Credited to Seller Line! 💰',
-        body: `UGX ${transaction.amount.toLocaleString()} received for "${transaction.itemTitle}". ${recipientText} Ref: ${transaction.reference}`,
+        id: `notif_account_checkout_${Date.now()}`,
+        title: 'Account checkout simulated',
+        body: `The preview checkout for "${transaction.itemTitle || 'this listing'}" completed locally. No seller was paid and no funds moved.`,
         type: 'payment',
         timestamp: new Date().toISOString(),
         read: false,
       });
     }
 
-    setMomoModalConfig(prev => ({ ...prev, isOpen: false }));
     setIsPricingModalOpen(false);
   };
 
   // Direct Payout Lines Handlers
-  const handleSavePayoutSettings = (updatedPayouts: {
+  const handleSavePayoutSettings = async (updatedPayouts: {
     mtnMomoNumber: string;
     mtnMomoName: string;
     airtelMoneyNumber: string;
@@ -763,14 +630,15 @@ export default function App() {
     momoPayMerchantCode: string;
     directPayoutsEnabled: boolean;
   }) => {
+    await fetch('/api/marketplace/profile', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: updatedPayouts.mtnMomoNumber || updatedPayouts.airtelMoneyNumber, bio: JSON.stringify(updatedPayouts) }) });
     setCurrentUser(prev => ({
       ...prev,
       ...updatedPayouts,
     }));
     triggerPushNotification({
       id: 'notif_payout_' + Date.now(),
-      title: 'Direct Payout Lines Saved! 📱',
-      body: `Buyer purchases will credit directly to your MTN (${updatedPayouts.mtnMomoNumber}) & Airtel (${updatedPayouts.airtelMoneyNumber}) lines.`,
+      title: 'Account payout preferences saved',
+      body: 'These settings are stored in this browser only. No MTN or Airtel connection is active and no funds can be routed.',
       type: 'system',
       timestamp: new Date().toISOString(),
       read: false,
@@ -778,35 +646,44 @@ export default function App() {
   };
 
   const handleSimulateTestPayoutAlert = (network: 'MTN' | 'AIRTEL', number: string, amount: number) => {
-    const carrier = network === 'MTN' ? 'MTN MoMo' : 'Airtel Money';
+    const carrier = network === 'MTN' ? 'MTN' : 'Airtel';
     triggerPushNotification({
-      id: 'sim_payout_' + Date.now(),
-      title: `${carrier} Alert: UGX ${amount.toLocaleString()} Received! 💵`,
-      body: `You have received UGX ${amount.toLocaleString()} directly on your line ${number} from 0782XXXXXX. New MoMo balance updated. Ref: UG-${network}-984210.`,
+      id: `account_payout_${Date.now()}`,
+      title: `Simulated ${carrier} alert`,
+      body: `Preview alert for UGX ${amount.toLocaleString()}. No transfer took place and no account balance changed.`,
       type: 'payment',
       timestamp: new Date().toISOString(),
       read: false,
     });
   };
 
-  // Boost listing trigger
   const handleTriggerBoost = (listing: Listing) => {
+    setIsDashboardOpen(false);
     setSelectedBoostListing(listing);
-    setMomoModalConfig({
-      isOpen: true,
-      amount: 10000,
-      purpose: 'BOOST_LISTING',
-      itemTitle: `Weekly Boost: ${listing.title}`,
-      listingId: listing.id,
-    });
+    setIsPricingModalOpen(true);
   };
 
-  // Plan selected from PricingPlansModal
   const handleSelectPricingPlan = (plan: PricingPlan) => {
-    let purpose: PaymentPurpose = 'BOOST_LISTING';
-    if (plan.id === 'weekly_22') purpose = 'PACKAGE_WEEKLY';
-    if (plan.id === 'monthly_40') purpose = 'PACKAGE_MONTHLY';
-    if (plan.id === 'unlimited_65') purpose = 'PACKAGE_UNLIMITED';
+    const packagePurposes: Record<string, PaymentPurpose> = {
+      weekly_22: 'PACKAGE_WEEKLY',
+      monthly_40: 'PACKAGE_MONTHLY',
+      unlimited_65: 'PACKAGE_UNLIMITED',
+    };
+    const purpose = packagePurposes[plan.id] || 'BOOST_LISTING';
+
+    if (purpose === 'BOOST_LISTING' && !selectedBoostListing) {
+      setIsPricingModalOpen(false);
+      setIsDashboardOpen(true);
+      triggerPushNotification({
+        id: `notif_choose_listing_${Date.now()}`,
+        title: 'Choose one of your listings first',
+        body: 'Open Seller Studio and select one of your own listings to preview a boost.',
+        type: 'system',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      return;
+    }
 
     setMomoModalConfig({
       isOpen: true,
@@ -818,92 +695,148 @@ export default function App() {
     setIsPricingModalOpen(false);
   };
 
-  // Open manual boost modal from pricing plans modal
   const handleOpenManualBoost = (config: {
     amount: 9500 | 21500 | 28550;
     planName: '7 days' | '30 days' | 'Boost Premium';
     adTitle: string;
     listingId?: string;
   }) => {
+    const listingId = config.listingId || selectedBoostListing?.id;
+    const listing = listings.find((item) => item.id === listingId);
+    if (!listing || listing.sellerId !== currentUser.id) {
+      setIsPricingModalOpen(false);
+      setIsDashboardOpen(true);
+      triggerPushNotification({
+        id: `notif_choose_listing_${Date.now()}`,
+        title: 'Choose one of your ads first',
+        body: 'Open Seller Studio and choose one of your own ads before requesting a boost.',
+        type: 'system',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      return;
+    }
+
+    setSelectedBoostListing(listing);
     setIsPricingModalOpen(false);
-    setManualBoostModalConfig({
-      isOpen: true,
+    setManualBoostConfig({
       amount: config.amount,
       planName: config.planName,
-      adTitle: config.adTitle || selectedBoostListing?.title || 'My Ad',
-      listingId: config.listingId || selectedBoostListing?.id,
+      adTitle: listing.title,
+      listingId: listing.id,
     });
   };
 
-  // When user clicks "I have paid"
-  const handleSubmitManualBoostOrder = (newOrder: BoostOrder) => {
-    // 1. Save to Admin > Boost Orders > Pending
-    setBoostOrders(prev => [newOrder, ...prev]);
-
-    // 2. Set listing status = PENDING PAYMENT, hidden from TOP until approved
-    if (newOrder.listingId) {
-      setListings(prev => prev.map(l => l.id === newOrder.listingId ? {
-        ...l,
-        isBoosted: true,
-        paymentStatus: 'PENDING_PAYMENT',
-      } : l));
+  const handleSubmitManualBoost = async (submission: ManualBoostSubmission) => {
+    const config = manualBoostConfig;
+    const signedInUser = authClient?.currentUser;
+    if (!config) throw new Error('Choose an ad and boost plan before submitting payment details.');
+    if (!signedInUser?.phoneNumber || signedInUser?.uid !== currentUser.id || signedInUser?.uid !== authUserId) {
+      throw new Error('Sign in with a verified phone number before submitting payment details.');
     }
 
-    // 3. User notification & push alert
-    triggerPushNotification({
-      id: 'notif_boost_pending_' + Date.now(),
-      title: 'Payment Received! ⏳',
-      body: `Payment received for "${newOrder.adTitle}". We are verifying with ${newOrder.network}. Your ad will be TOP within 5 minutes. You will get SMS.`,
-      type: 'payment',
-      timestamp: new Date().toISOString(),
-      read: false,
+    const token = await signedInUser.getIdToken();
+    const response = await fetch('/api/boost-orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        listingId: config.listingId,
+        adTitle: config.adTitle,
+        planName: config.planName,
+        network: submission.network,
+        payerNumber: submission.payerNumber,
+        transactionId: submission.transactionId,
+        screenshotDataUrl: submission.screenshotDataUrl,
+      }),
     });
-  };
-
-  // Admin approves boost order
-  const handleApproveBoostOrder = (orderId: string) => {
-    const targetOrder = boostOrders.find(o => o.id === orderId);
-    if (!targetOrder) return;
-
-    setBoostOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Approved' } : o));
-
-    // Activate TOP ad placement
-    if (targetOrder.listingId) {
-      setListings(prev => prev.map(l => l.id === targetOrder.listingId ? {
-        ...l,
-        isBoosted: true,
-        paymentStatus: 'APPROVED',
-      } : l));
-    } else {
-      // Find matching ad by title
-      setListings(prev => prev.map(l => l.title === targetOrder.adTitle ? {
-        ...l,
-        isBoosted: true,
-        paymentStatus: 'APPROVED',
-      } : l));
+    const result = await response.json().catch(() => null) as { order?: BoostOrder; error?: string } | null;
+    if (!response.ok || !result?.order) {
+      throw new Error(result?.error || 'We could not submit the payment details. Please try again.');
     }
 
-    confetti({ particleCount: 70, spread: 60 });
-
-    triggerPushNotification({
-      id: 'notif_boost_approved_' + Date.now(),
-      title: '🌟 Ad Boost Approved! TOP Active',
-      body: `Boost payment for "${targetOrder.adTitle}" approved! Your ad is now in TOP search results.`,
-      type: 'boost',
-      timestamp: new Date().toISOString(),
-      read: false,
-    });
+    const savedOrder = result.order;
+    await mutateBoostOrders((current) => ({
+      orders: [savedOrder, ...(current?.orders ?? []).filter((order) => order.id !== savedOrder.id)],
+      canReview: current?.canReview === true,
+    }), { revalidate: false });
+    setListings((previous) => previous.map((listing) => listing.id === config.listingId
+      ? { ...listing, paymentStatus: 'PENDING_PAYMENT' }
+      : listing));
   };
 
-  // Admin declines boost order
-  const handleDeclineBoostOrder = (orderId: string) => {
-    setBoostOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Declined' } : o));
+  const handleReviewBoostOrder = async (orderId: string, action: 'approve' | 'decline') => {
+    if (!canReviewBoostOrders) throw new Error('Admin review is not available for this account.');
+    const targetOrder = boostOrders.find((order) => order.id === orderId);
+    const signedInUser = authClient?.currentUser;
+    if (!targetOrder || !signedInUser) throw new Error('This payment submission could not be found.');
+
+    setReviewingBoostOrderId(orderId);
+    try {
+      const token = await signedInUser.getIdToken();
+      const response = await fetch('/api/boost-orders', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, action }),
+      });
+      const result = await response.json().catch(() => null) as { order?: BoostOrder; error?: string } | null;
+      if (!response.ok || !result?.order) {
+        throw new Error(result?.error || 'The payment review could not be saved. Refresh and try again.');
+      }
+
+      const reviewedOrder = result.order;
+      await mutateBoostOrders((current) => current
+        ? { ...current, orders: current.orders.map((order) => order.id === reviewedOrder.id ? reviewedOrder : order) }
+        : current, { revalidate: false });
+
+      if (action === 'approve') {
+        const boostedUntil = new Date(Date.now() + targetOrder.durationDays * 24 * 60 * 60 * 1000).toISOString();
+        setListings((previous) => previous.map((listing) => listing.id === targetOrder.listingId
+          ? { ...listing, isBoosted: true, paymentStatus: 'APPROVED', boostedUntil }
+          : listing));
+        confetti({ particleCount: 70, spread: 60 });
+      }
+    } finally {
+      setReviewingBoostOrderId(null);
+    }
+  };
+
+  const handleViewBoostProof = async (orderId: string) => {
+    if (!canReviewBoostOrders) throw new Error('Admin review is not available for this account.');
+    const signedInUser = authClient?.currentUser;
+    if (!signedInUser) throw new Error('Sign in again to view payment proof.');
+
+    const token = await signedInUser.getIdToken();
+    const response = await fetch(`/api/boost-orders?proof=${encodeURIComponent(orderId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(result?.error || 'Private payment proof could not be loaded.');
+    }
+    return URL.createObjectURL(await response.blob());
+  };
+
+  const handleRenewListing = (listingId: string) => {
+    const renewedAt = new Date().toISOString();
+    const listing = listings.find((item) => item.id === listingId && item.sellerId === currentUser.id && !item.isSold);
+    if (!listing) return;
+
+    setListings((previous) => previous.map((item) => item.id === listingId
+      ? { ...item, renewedAt, updatedAt: renewedAt, paymentStatus: 'ACTIVE' }
+      : item));
     triggerPushNotification({
-      id: 'notif_boost_declined_' + Date.now(),
-      title: 'Boost Order Declined',
-      body: 'Boost payment could not be matched with telecom transaction. Please check details.',
+      id: `notif_renew_${Date.now()}`,
+      title: 'Ad renewed',
+      body: `"${listing.title}" is renewed for another 30 days in this browser.`,
       type: 'system',
-      timestamp: new Date().toISOString(),
+      timestamp: renewedAt,
       read: false,
     });
   };
@@ -939,7 +872,7 @@ export default function App() {
     }
   };
 
-  // Switch demo user
+  // Switch account user
   const handleSwitchUserRole = () => {
     if (currentUser.id === INITIAL_CURRENT_USER.id) {
       setCurrentUser(INITIAL_SELLERS[0]); // Brenda Nakato
@@ -950,11 +883,7 @@ export default function App() {
 
   // Update profile picture
   const handleUpdateAvatar = (newAvatar: string) => {
-    setCurrentUser(prev => {
-      const updated = { ...prev, avatar: newAvatar };
-      localStorage.setItem('shoplocal_current_user', JSON.stringify(updated));
-      return updated;
-    });
+    setCurrentUser(prev => ({ ...prev, avatar: newAvatar }));
     setViewProfileUser(prev => prev ? { ...prev, avatar: newAvatar } : null);
   };
 
@@ -964,25 +893,36 @@ export default function App() {
     setRecentlyViewed(prev => {
       const filtered = prev.filter(item => item.id !== listing.id);
       const updated = [listing, ...filtered].slice(0, 5);
-      localStorage.setItem('shoplocal_recently_viewed', JSON.stringify(updated));
-      return updated;
+    return updated;
     });
   };
 
   // Clear recently viewed history
   const handleClearRecentlyViewed = () => {
     setRecentlyViewed([]);
-    localStorage.removeItem('shoplocal_recently_viewed');
   };
 
-  // Sign out from settings anytime
-  const handleSignOut = () => {
-    localStorage.removeItem('shoplocal_current_user');
+  // Sign out from account and return to the local account account.
+  const handleSignOut = async () => {
+    try {
+      if (authClient) await signOut();
+    } catch {
+      triggerPushNotification({
+        id: 'notif_signout_error_' + Date.now(),
+        title: 'Could not sign out',
+        body: 'account could not end this session. Please try again.',
+        type: 'system',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      return;
+    }
+
     const guestUser: User = {
       id: 'guest_' + Date.now(),
       name: 'Guest User',
-      phone: '+256 700 000 000',
-      email: 'guest@shoplocal.ug',
+      phone: '',
+      email: '',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
       district: 'Kampala',
       rating: 0,
@@ -1004,8 +944,8 @@ export default function App() {
     setViewProfileUser(null);
     triggerPushNotification({
       id: 'notif_signout_' + Date.now(),
-      title: 'Signed Out Successfully 👋',
-      body: 'You have signed out. You can sign back in or create a new account anytime.',
+      title: 'Signed out',
+      body: 'Your account session has ended. You can sign in again anytime.',
       type: 'system',
       timestamp: new Date().toISOString(),
       read: false,
@@ -1045,6 +985,13 @@ export default function App() {
   // Handle Mobile navigation tabs
   const handleMobileTabChange = (tab: 'home' | 'saved' | 'post' | 'messages' | 'dashboard') => {
     setMobileTab(tab);
+    setIsChatOpen(false);
+    setActiveChatConvId(null);
+    setIsPostAdOpen(false);
+    setIsDashboardOpen(false);
+    setIsPricingModalOpen(false);
+    setManualBoostConfig(null);
+    setSelectedListing(null);
     if (tab === 'home') {
       setShowSavedOnly(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1067,6 +1014,7 @@ export default function App() {
       {/* Top Header */}
       <Header
         currentUser={currentUser}
+        isaccountAuthenticated={Boolean(authUserId && currentUser.id === authUserId)}
         selectedDistrict={selectedDistrict}
         onSelectDistrict={setSelectedDistrict}
         searchQuery={searchQuery}
@@ -1132,13 +1080,13 @@ export default function App() {
               <div className="flex flex-col md:flex-row items-center justify-between gap-3 relative z-10 w-full">
                 <div className="space-y-1.5 text-center md:text-left max-w-xl">
                   <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-white text-[10px] font-bold">
-                    <span>🇺🇬 UGANDA'S #1 VERIFIED CLASSIFIEDS</span>
+                    <span>UGANDA&apos;S LOCAL MARKETPLACE</span>
                   </div>
                   <h1 className="font-display font-black text-lg sm:text-2xl text-white tracking-tight leading-snug">
-                    Sell Faster & Buy Safely with <span className="text-amber-200">ShopLocal UG</span>
+                    Browse & sell locally with <span className="text-amber-200">ShopLocal UG</span>
                   </h1>
                   <p className="text-[11px] sm:text-xs text-emerald-50 leading-relaxed">
-                    <strong>ShopLocal Ug</strong> · Instant <strong>MTN MoMo & Airtel Money</strong> payouts · Direct buyer chat
+                    Post local ads, manage your seller workspace, and request boosts with private payment-proof review.
                   </p>
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
                     <button
@@ -1161,17 +1109,17 @@ export default function App() {
                 {/* Right Mini Promo Box */}
                 <div className="bg-black/15 backdrop-blur-xs border border-white/20 rounded-xl p-3 text-white max-w-xs w-full space-y-1 hidden sm:block">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-amber-200">ShopLocal Ug Verified Trading</span>
+                    <span className="text-amber-200">ShopLocal UG account</span>
                     <span className="bg-white/20 px-2 py-0.5 rounded text-[10px]">
                       {currentUser.isProMember ? 'PRO' : `${currentUser.freeListingsUsed} / ${currentUser.freeListingsTotal}`}
                     </span>
                   </div>
                   <p className="text-[11px] text-emerald-50 leading-tight">
-                    ShopLocal Ug · Uganda's #1 verified classifieds & small business trading network!
+                    Browse marketplace listings, try an account, and preview chat and checkout. All activity stays in this browser.
                   </p>
                   <div className="pt-1 text-[10px] flex items-center justify-between text-emerald-100 border-t border-white/10">
-                    <span>MTN MoMo: Active</span>
-                    <span>Airtel Money: Active</span>
+                    <span>MTN account: simulated</span>
+                    <span>Airtel account: simulated</span>
                   </div>
                 </div>
               </div>
@@ -1293,7 +1241,7 @@ export default function App() {
                   }`}
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Verified Sellers Only</span>
+                  <span>Verified Sellers</span>
                 </button>
 
                 <button
@@ -1389,7 +1337,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <Flame className="w-4 h-4 text-[#ff7e00]" />
                 <h2 className="font-display font-black text-sm sm:text-base text-[#222222]">
-                  {feedTab === 'trending' ? 'Trending Ads' : feedTab === 'recent' ? 'Recent / Fresh Ads' : feedTab === 'verified' ? 'Verified Sellers Ads' : 'Great Deals'}
+                  {feedTab === 'trending' ? 'Trending Ads' : feedTab === 'recent' ? 'Recent / Fresh Ads' : feedTab === 'verified' ? 'Sample Badge Ads' : 'Great Deals'}
                 </h2>
                 <span className="text-xs font-bold text-[#00B53F] bg-[#00B53F]/10 px-2 py-0.5 rounded-full">
                   {sortedListings.length}
@@ -1475,9 +1423,14 @@ export default function App() {
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#00B53F] flex items-center justify-center text-white font-bold text-sm">
-              <ShoppingBag className="w-4 h-4 text-white stroke-[2.5]" />
-            </div>
+            <img
+              src="/icon.svg"
+              alt=""
+              aria-hidden="true"
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-lg"
+            />
             <div className="flex items-baseline gap-1">
               <span className="font-display font-black text-xl tracking-tight text-[#00B53F]">
                 ShopLocal
@@ -1523,8 +1476,7 @@ export default function App() {
               itemTitle: item.title,
               listingId: item.id,
               sellerName: item.seller.name,
-              sellerMtnLine: item.seller.mtnMomoNumber || item.seller.phone,
-              sellerAirtelLine: item.seller.airtelMoneyNumber || '0701 445 921',
+
             });
           }}
           onOpenUserProfile={(u) => setViewProfileUser(u)}
@@ -1573,8 +1525,7 @@ export default function App() {
               itemTitle,
               listingId: activeConv?.listingId,
               sellerName: otherPartyName,
-              sellerMtnLine: currentUser.mtnMomoNumber || '0772 849 201',
-              sellerAirtelLine: currentUser.airtelMoneyNumber || '0701 445 921',
+
             });
           }}
           onOpenSafetyTips={() => setIsSafetyTipsOpen(true)}
@@ -1598,28 +1549,17 @@ export default function App() {
         />
       )}
 
-      {/* MODAL 4B: Manual Boost Payment Modal (MTN & Airtel Direct) */}
-      {manualBoostModalConfig.isOpen && (
-        <ManualBoostPaymentModal
-          amount={manualBoostModalConfig.amount}
-          planName={manualBoostModalConfig.planName}
-          adTitle={manualBoostModalConfig.adTitle}
-          userPhone={currentUser.phone}
-          listingId={manualBoostModalConfig.listingId}
-          onClose={() => setManualBoostModalConfig(prev => ({ ...prev, isOpen: false }))}
-          onSubmitOrder={handleSubmitManualBoostOrder}
-          darkMode={darkMode}
-        />
-      )}
+  {isAdminBoostOrdersOpen && <div className="fixed inset-0 z-40 overflow-y-auto bg-black/70 p-4"><div className="mx-auto mt-8 max-w-6xl"><AdminReviewPanel darkMode={darkMode} /></div></div>}
 
-      {/* MODAL 4C: Admin Boost Orders Modal (Verification & Approval) */}
-      {isAdminBoostOrdersOpen && (
+  {/* MODAL 4C: Admin Boost Orders Modal (Verification & Approval) */}
+  {isAdminBoostOrdersOpen && (
         <AdminBoostOrdersModal
           orders={boostOrders}
           listings={listings}
           onClose={() => setIsAdminBoostOrdersOpen(false)}
-          onApproveOrder={handleApproveBoostOrder}
-          onDeclineOrder={handleDeclineBoostOrder}
+          onApproveOrder={(orderId) => { void handleReviewBoostOrder(orderId, 'approve'); }}
+          onDeclineOrder={(orderId) => { void handleReviewBoostOrder(orderId, 'decline'); }}
+          onViewProof={handleViewBoostProof}
           darkMode={darkMode}
         />
       )}
@@ -1632,9 +1572,11 @@ export default function App() {
           itemTitle={momoModalConfig.itemTitle}
           listingId={momoModalConfig.listingId}
           sellerName={momoModalConfig.sellerName}
-          sellerMtnLine={momoModalConfig.sellerMtnLine}
-          sellerAirtelLine={momoModalConfig.sellerAirtelLine}
-          onClose={() => setMomoModalConfig(prev => ({ ...prev, isOpen: false }))}
+
+          onClose={() => {
+            setMomoModalConfig(prev => ({ ...prev, isOpen: false }));
+            setSelectedBoostListing(null);
+          }}
           onSuccess={handlePaymentSuccess}
           darkMode={darkMode}
         />
@@ -1643,17 +1585,31 @@ export default function App() {
       {/* MODAL 6: One-Time Sign-Up */}
       {isSignUpModalOpen && (
         <SignUpModal
-          onClose={() => setIsSignUpModalOpen(false)}
-          onSignUpComplete={(newUser) => {
-            setCurrentUser(newUser);
-            localStorage.setItem('shoplocal_current_user', JSON.stringify(newUser));
+          onClose={() => {
+            const signedInUser = authClient?.currentUser;
+            if (signedInUser && signedInUser?.uid !== currentUser.id && authClient) {
+              void signOut();
+            }
             setIsSignUpModalOpen(false);
-            // Let account appear directly in profile without sign-in details
-            setViewProfileUser(newUser);
+          }}
+          onSignUpComplete={(newUser) => {
+            const signedInUser = authClient?.currentUser ?? null;
+            const profile = signedInUser?.uid === newUser.id
+              ? {
+                  ...newUser,
+                  phone: signedInUser.phoneNumber ?? newUser.phone,
+                  isPhoneVerified: Boolean(signedInUser.phoneNumber),
+                }
+              : newUser;
+            void fetch('/api/marketplace/profile', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: profile.username, phone: profile.phone, district: profile.district, bio: (profile as User & { bio?: string }).bio ?? '', avatar: profile.avatar }) });
+            if (signedInUser?.uid === profile.id) setAuthUserId(signedInUser.uid);
+            setCurrentUser(profile);
+            setIsSignUpModalOpen(false);
+            setViewProfileUser(profile);
             triggerPushNotification({
               id: 'notif_welcome_' + Date.now(),
-              title: `Welcome, ${newUser.name}! 🇺🇬`,
-              body: 'Your account is active with 18 free listings ready to post.',
+              title: 'Welcome to ShopLocal UG',
+              body: 'Your phone number was verified with account. Your marketplace profile is saved in this browser.',
               type: 'system',
               timestamp: new Date().toISOString(),
               read: false,
@@ -1727,11 +1683,12 @@ export default function App() {
             setIsDashboardOpen(false);
             setIsPayoutSettingsOpen(true);
           }}
-          onOpenAdminBoostOrders={() => {
+          onOpenAdminBoostOrders={canReviewBoostOrders ? () => {
             setIsDashboardOpen(false);
             setIsAdminBoostOrdersOpen(true);
-          }}
+          } : undefined}
           pendingBoostOrdersCount={boostOrders.filter(o => o.status === 'Pending').length}
+          onRenewListing={handleRenewListing}
           onToggleSold={handleToggleSold}
           onBoostListing={(id) => {
             const item = listings.find(l => l.id === id);

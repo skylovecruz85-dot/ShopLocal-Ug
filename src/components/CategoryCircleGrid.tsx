@@ -16,7 +16,7 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { CategoryId } from '../types';
-import { CATEGORIES } from '../data/mockData';
+import { CATEGORIES } from '../data/catalog';
 
 interface CategoryCircleGridProps {
   selectedCategory: CategoryId | 'all';

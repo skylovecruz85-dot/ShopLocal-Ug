@@ -204,7 +204,6 @@ export const PostAdPromoModal: React.FC<PostAdPromoModalProps> = ({
               href="#terms"
               onClick={(e) => {
                 e.preventDefault();
-                alert('Terms of Use: Ad listings must comply with Ugandan laws and ShopLocal guidelines.');
               }}
               className="text-[#00E676] underline hover:text-[#00C853] cursor-pointer"
             >

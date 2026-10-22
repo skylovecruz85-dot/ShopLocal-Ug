@@ -63,11 +63,53 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
     }
     setIsBusy(true);
     try {
-      const response = await fetch(`/api/auth/${isCreateAccount ? 'sign-up/email' : 'sign-in/email'}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(isCreateAccount ? { email: email.trim(), password, name: fullName.trim() || email.split('@')[0] } : { email: email.trim(), password }) });
-      const payload = await response.json().catch(() => ({})) as { user?: { id: string }; message?: string; error?: string };
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? 'Email or password could not be accepted.');
+      const response = await fetch(`/api/auth/${isCreateAccount ? 'sign-up/email' : 'sign-in/email'}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isCreateAccount ? { email: email.trim(), password, name: fullName.trim() || email.split('@')[0] } : { email: email.trim(), password }),
+      });
+      const payload = await response.json().catch(() => ({})) as { user?: { id: string; name?: string; email?: string }; message?: string; error?: string };
+      if (!response.ok) {
+        throw new Error(payload.message ?? payload.error ?? 'Invalid email or password.');
+      }
       setAuthUserId(payload.user?.id ?? '');
-      setStep(isCreateAccount ? 'profile' : 'profile');
+
+      if (!isCreateAccount && payload.user) {
+        const profileRes = await fetch('/api/marketplace/profile', { credentials: 'include' });
+        const profilePayload = await profileRes.json().catch(() => null) as { data?: User } | null;
+        if (profilePayload?.data) {
+          onSignUpComplete(profilePayload.data);
+        } else {
+          onSignUpComplete({
+            id: payload.user.id,
+            name: payload.user.name || email.split('@')[0],
+            username: (payload.user.name || email.split('@')[0]).replace(/\s+/g, '').toLowerCase(),
+            phone: '',
+            email: payload.user.email || email.trim(),
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+            district: 'Kampala',
+            rating: 5,
+            reviewCount: 0,
+            isVerified: false,
+            verificationStatus: 'UNVERIFIED',
+            isPhoneVerified: false,
+            isProMember: false,
+            freeListingsUsed: 0,
+            freeListingsTotal: 18,
+            hasBiometrics: false,
+            joinedDate: new Date().toISOString(),
+            responseTime: 'Fast response',
+            badges: [],
+            activePlan: 'FREE_18',
+            completedSales: [],
+          });
+        }
+        onClose();
+        return;
+      }
+
+      setStep('profile');
     } catch (error) {
       setFormError(getAuthErrorMessage(error));
     } finally {
@@ -132,11 +174,11 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
           {step === 'email' && (
             <>
               <div>
-                <label className="mb-1 block text-xs font-bold" htmlFor="account-email-auth">Email address</label>
+                <label className={`mb-1 block text-xs font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`} htmlFor="account-email-auth">Email address</label>
                 <input autoComplete="email" className={inputClass.replace('pl-10', 'px-4')} id="account-email-auth" onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required type="email" value={email} />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold" htmlFor="account-password">Password</label>
+                <label className={`mb-1 block text-xs font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`} htmlFor="account-password">Password</label>
                 <div className="relative">
                   <input autoComplete={isCreateAccount ? 'new-password' : 'current-password'} className={`${inputClass.replace('pl-10', 'px-4')} pr-11`} id="account-password" minLength={6} onChange={(event) => setPassword(event.target.value)} placeholder="At least 6 characters" required type={showPassword ? 'text' : 'password'} value={password} />
                   <button aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600" onClick={() => setShowPassword((value) => !value)} type="button">
@@ -147,13 +189,13 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
               {isCreateAccount && (
                 <div>
                   <div>
-                    <label className="mb-1 block text-xs font-bold" htmlFor="account-username-auth">Username</label>
+                    <label className={`mb-1 block text-xs font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`} htmlFor="account-username-auth">Username</label>
                     <input autoComplete="username" className={inputClass.replace('pl-10', 'px-4')} id="account-username-auth" maxLength={30} minLength={3} onChange={(event) => setUsername(event.target.value.replace(/\s/g, ''))} placeholder="sarah_ug" required value={username} />
                   </div>
 
                 </div>
               )}
-              <button className="text-left text-xs font-bold text-emerald-600" onClick={() => setIsCreateAccount((value) => !value)} type="button">{isCreateAccount ? 'Already have an account? Sign in' : 'Need an account? Create one'}</button>
+              <button className={`text-left text-xs font-bold ${darkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`} onClick={() => setIsCreateAccount((value) => !value)} type="button">{isCreateAccount ? 'Already have an account? Sign in' : 'Need an account? Create one'}</button>
             </>
           )}
 
@@ -174,7 +216,7 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold" htmlFor="account-full-name">Full or business name</label>
+                <label className={`mb-1 block text-xs font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`} htmlFor="account-full-name">Full or business name</label>
                 <div className="relative">
                   <UserIcon className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                   <input autoComplete="name" className={inputClass} id="account-full-name" maxLength={80} minLength={2} onChange={(event) => setFullName(event.target.value)} placeholder="e.g. Sarah Nalubega" required value={fullName} />
@@ -182,12 +224,12 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold" htmlFor="account-username">Username</label>
+                <label className={`mb-1 block text-xs font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`} htmlFor="account-username">Username</label>
                 <input autoComplete="username" className={inputClass.replace('pl-10', 'px-4')} id="account-username" maxLength={30} minLength={3} onChange={(event) => setUsername(event.target.value.replace(/\s/g, ''))} placeholder="e.g. sarah_ug" required value={username} />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold" htmlFor="account-email">Email address <span className={`font-normal ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>(optional)</span></label>
+                <label className={`mb-1 block text-xs font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`} htmlFor="account-email">Email address <span className={`font-normal ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>(optional)</span></label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                   <input autoComplete="email" className={inputClass} id="account-email" onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" type="email" value={email} />
@@ -196,17 +238,17 @@ export const SignUpModal: React.FC<SignUpModalProps> = ({ onClose, onSignUpCompl
 
               {(
                 <div>
-                  <label className="mb-1 block text-xs font-bold" htmlFor="account-profile-phone">Phone number</label>
+                  <label className={`mb-1 block text-xs font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`} htmlFor="account-profile-phone">Phone number</label>
                   <input autoComplete="tel" className={inputClass.replace('pl-10', 'px-4')} id="account-profile-phone" inputMode="tel" onChange={(event) => setPhone(event.target.value)} placeholder="+256 772 000 000" required type="tel" value={phone} />
                 </div>
               )}
 
               <div>
-                <label className="mb-1 block text-xs font-bold" htmlFor="account-district">Trading district</label>
+                <label className={`mb-1 block text-xs font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`} htmlFor="account-district">Trading district</label>
                 <div className="relative">
                   <MapPin className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-emerald-600" />
                   <select className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 ${darkMode ? 'border-slate-700 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-900'}`} id="account-district" onChange={(event) => setDistrict(event.target.value as UgandaDistrict)} value={district}>
-                    {UGANDA_DISTRICTS.filter((value) => value !== 'All Uganda').map((value) => <option key={value} value={value}>{value}</option>)}
+                    {UGANDA_DISTRICTS.filter((value) => value !== 'All Uganda').map((value) => <option key={value} value={value} className={darkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>{value}</option>)}
                   </select>
                 </div>
               </div>

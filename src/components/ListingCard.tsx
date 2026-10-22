@@ -30,10 +30,12 @@ export const ListingCard: React.FC<ListingCardProps> = ({
   return (
     <div 
       onClick={() => onSelectListing(listing)}
-      className="group rounded-xl border border-slate-200/90 bg-white hover:border-[#00B53F] hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col relative overflow-hidden shadow-xs"
+      className={`group rounded-xl border transition-all duration-200 cursor-pointer flex flex-col relative overflow-hidden shadow-xs ${
+        darkMode ? 'bg-slate-900 border-slate-800 text-white hover:border-[#00B53F]' : 'bg-white border-slate-200/90 hover:border-[#00B53F]'
+      }`}
     >
       {/* Image container */}
-      <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">
+      <div className="relative aspect-[4/3] w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <img
           src={listing.images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80'}
           alt={listing.title}
@@ -107,17 +109,23 @@ export const ListingCard: React.FC<ListingCardProps> = ({
           </div>
 
           {/* Listing Title */}
-          <h3 className="font-semibold text-xs sm:text-sm leading-snug line-clamp-2 text-[#222222] group-hover:text-[#00B53F] transition-colors">
+          <h3 className={`font-semibold text-xs sm:text-sm leading-snug line-clamp-2 transition-colors ${
+            darkMode ? 'text-white group-hover:text-[#00B53F]' : 'text-[#222222] group-hover:text-[#00B53F]'
+          }`}>
             {listing.title}
           </h3>
 
           {/* Subcategory & Brand/Type */}
-          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1 truncate">
+          <div className={`flex items-center gap-1 text-[11px] mt-1 truncate ${
+            darkMode ? 'text-slate-300' : 'text-slate-500'
+          }`}>
             <span className="truncate">{listing.subcategory}</span>
             {(listing.brand || listing.type) && (
               <>
-                <span className="text-slate-300">•</span>
-                <span className="font-medium text-slate-600 truncate">
+                <span className={darkMode ? 'text-slate-500' : 'text-slate-300'}>•</span>
+                <span className={`font-semibold truncate ${
+                  darkMode ? 'text-white' : 'text-slate-600'
+                }`}>
                   {listing.brand || listing.type}
                 </span>
               </>
@@ -126,13 +134,19 @@ export const ListingCard: React.FC<ListingCardProps> = ({
         </div>
 
         {/* Location & Time Stamp */}
-        <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between text-[11px] text-slate-600">
+        <div className={`pt-2 mt-2 border-t flex flex-col gap-1.5 ${
+          darkMode ? 'border-slate-800' : 'border-slate-100'
+        }`}>
+          <div className={`flex items-center justify-between text-[11px] ${
+            darkMode ? 'text-slate-200' : 'text-slate-600'
+          }`}>
             <span className="flex items-center gap-1 truncate max-w-[130px] sm:max-w-[150px]">
               <MapPin className="w-3 h-3 text-[#00B53F] shrink-0" />
-              <span className="truncate">{listing.district}</span>
+              <span className={`truncate font-medium ${darkMode ? 'text-white' : ''}`}>{listing.district}</span>
             </span>
-            <span className="flex items-center gap-0.5 shrink-0 text-[10px] text-slate-400">
+            <span className={`flex items-center gap-0.5 shrink-0 text-[10px] ${
+              darkMode ? 'text-slate-300' : 'text-slate-400'
+            }`}>
               <Clock className="w-2.5 h-2.5" />
               <span>{formatTimeAgo(listing.createdAt)}</span>
             </span>

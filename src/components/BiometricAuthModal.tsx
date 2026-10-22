@@ -18,12 +18,14 @@ interface BiometricAuthModalProps {
   currentUser: User;
   onClose: () => void;
   onEnrollSuccess: (credentialId: string) => void;
+  darkMode?: boolean;
 }
 
 export const BiometricAuthModal: React.FC<BiometricAuthModalProps> = ({
   currentUser,
   onClose,
   onEnrollSuccess,
+  darkMode,
 }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -74,7 +76,9 @@ export const BiometricAuthModal: React.FC<BiometricAuthModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
       <div 
-        className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden relative border border-slate-200"
+        className={`rounded-3xl shadow-2xl max-w-md w-full overflow-hidden relative border transition-colors ${
+          darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -109,9 +113,11 @@ export const BiometricAuthModal: React.FC<BiometricAuthModalProps> = ({
             
             <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
               success
-                ? 'bg-emerald-100 text-emerald-600 scale-105'
+                ? 'bg-emerald-500/20 text-[#00E676] scale-105'
                 : isScanning
-                ? 'bg-emerald-50 text-emerald-700 animate-pulse'
+                ? 'bg-emerald-500/10 text-emerald-400 animate-pulse'
+                : darkMode
+                ? 'bg-slate-800 text-white hover:bg-slate-700'
                 : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
             }`}>
               {success ? (
@@ -123,12 +129,12 @@ export const BiometricAuthModal: React.FC<BiometricAuthModalProps> = ({
           </div>
 
           <div>
-            <h4 className="font-display font-bold text-base text-slate-900">
+            <h4 className={`font-display font-bold text-base ${darkMode ? 'text-white' : 'text-slate-900'}`}>
               {currentUser.hasBiometrics || success
                 ? 'Biometrics Enrolled & Active'
                 : 'Enroll Fingerprint or Face ID'}
             </h4>
-            <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+            <p className={`text-xs mt-1 max-w-xs mx-auto ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>
               {statusMessage || (
                 currentUser.hasBiometrics
                   ? 'Your biometric passkey is bound to your Ugandan registered phone number.'
@@ -153,15 +159,23 @@ export const BiometricAuthModal: React.FC<BiometricAuthModalProps> = ({
                 <button
                   onClick={handleTestAuthentication}
                   disabled={isScanning}
-                  className="w-full py-3 px-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors ${
+                    darkMode
+                      ? 'bg-emerald-950/50 border border-emerald-600 text-emerald-300 hover:bg-emerald-900/50'
+                      : 'bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100'
+                  }`}
                 >
-                  <ScanFace className="w-4 h-4 text-emerald-700" />
+                  <ScanFace className="w-4 h-4 text-emerald-500" />
                   <span>Test Biometric Instant Login</span>
                 </button>
 
                 <button
                   onClick={onClose}
-                  className="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
+                  className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs transition-colors cursor-pointer ${
+                    darkMode
+                      ? 'bg-slate-800 text-white hover:bg-slate-700 border border-slate-700'
+                      : 'bg-slate-900 text-white hover:bg-slate-800'
+                  }`}
                 >
                   Continue Browsing
                 </button>
@@ -169,7 +183,9 @@ export const BiometricAuthModal: React.FC<BiometricAuthModalProps> = ({
             )}
           </div>
 
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+          <div className={`pt-2 border-t flex items-center justify-center gap-1.5 text-[11px] ${
+            darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-400'
+          }`}>
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>Encrypted locally in device Hardware Secure Enclave</span>
           </div>

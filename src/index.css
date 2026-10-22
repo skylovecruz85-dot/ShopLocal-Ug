@@ -23,13 +23,14 @@
   html.dark body,
   html.dark #root {
     background: #020617;
-    color: #e2e8f0;
+    color: #ffffff;
   }
 
   html.dark input,
   html.dark textarea,
   html.dark select {
     color-scheme: dark;
+    color: #ffffff;
   }
   
   h1, h2, h3, .font-display {
@@ -37,25 +38,79 @@
   }
 }
 
-/* Shared dark-mode tokens for components that use light utility classes. */
+/* Global dark-mode tokens ensuring white, readable text across all elements */
 @layer utilities {
-  .dark .bg-white { background-color: #0f172a !important; }
-  .dark .bg-slate-50 { background-color: #111827 !important; }
-  .dark .bg-slate-100 { background-color: #1e293b !important; }
-  .dark .bg-gray-50 { background-color: #111827 !important; }
-  .dark .bg-gray-100 { background-color: #1e293b !important; }
+  .dark {
+    color: #ffffff;
+  }
+
+  .dark .bg-white {
+    background-color: #0f172a !important;
+  }
+
+  .dark .bg-\[\#F5F5F5\],
+  .dark .bg-\[\#F0F2F5\],
+  .dark [class*="bg-[#F5F5F5]"],
+  .dark [class*="bg-[#F0F2F5]"] {
+    background-color: #0b1120 !important;
+  }
+
+  .dark .bg-slate-50,
+  .dark .bg-gray-50 {
+    background-color: #0f172a !important;
+  }
+
+  .dark .bg-slate-100,
+  .dark .bg-gray-100 {
+    background-color: #1e293b !important;
+  }
+
+  /* Force white readable color on titles, body text, and labels */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: #ffffff !important;
+  }
+
+  .dark .text-\[\#222222\],
+  .dark [class*="text-[#222222]"],
   .dark .text-slate-900,
-  .dark .text-gray-900 { color: #f8fafc !important; }
+  .dark .text-gray-900,
   .dark .text-slate-800,
-  .dark .text-gray-800 { color: #e2e8f0 !important; }
+  .dark .text-gray-800,
   .dark .text-slate-700,
-  .dark .text-gray-700 { color: #cbd5e1 !important; }
+  .dark .text-gray-700 {
+    color: #ffffff !important;
+  }
+
+  .dark .text-\[\#757575\],
+  .dark [class*="text-[#757575]"],
   .dark .text-slate-600,
-  .dark .text-gray-600 { color: #94a3b8 !important; }
+  .dark .text-gray-600,
+  .dark .text-slate-500,
+  .dark .text-gray-500 {
+    color: #cbd5e1 !important;
+  }
+
   .dark .border-slate-200,
-  .dark .border-gray-200 { border-color: #334155 !important; }
+  .dark .border-gray-200,
   .dark .border-slate-100,
-  .dark .border-gray-100 { border-color: #1e293b !important; }
+  .dark .border-gray-100,
+  .dark .border-\[\#EEEEEE\],
+  .dark [class*="border-[#EEEEEE]"] {
+    border-color: #1e293b !important;
+  }
+
+  .dark .bg-\[\#F9F9F9\],
+  .dark [class*="bg-[#F9F9F9]"] {
+    background-color: #1e293b !important;
+  }
+
+  /* Account Credentials text strictly forced to pure crisp white in dark mode */
+  .dark [data-credentials],
+  .dark [data-credentials] *,
+  .dark .credentials-card,
+  .dark .credentials-card * {
+    color: #ffffff !important;
+  }
 }
 
 /* Custom scrollbar */
@@ -76,4 +131,3 @@
 html.dark ::-webkit-scrollbar-track { background: #0f172a; }
 html.dark ::-webkit-scrollbar-thumb { background: #475569; }
 html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-

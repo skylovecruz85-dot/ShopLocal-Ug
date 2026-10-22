@@ -40,9 +40,13 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   const [description, setDescription] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [tags, setTags] = useState('Uganda, Quality, Fast Delivery');
+  const [formError, setFormError] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormError('');
     const rawDigits = e.target.value.replace(/\D/g, '');
     if (!rawDigits) {
       setPriceInput('');
@@ -73,17 +77,19 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
     });
   };
 
-  const handleCustomImageUrl = () => {
-    const url = prompt('Enter image URL:');
-    if (url && url.startsWith('http')) {
-      setImages([...images, url]);
+  const handleAddImageUrl = () => {
+    const trimmed = imageUrlInput.trim();
+    if (trimmed && (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:image/'))) {
+      setImages(prev => [...prev, trimmed]);
+      setImageUrlInput('');
+      setShowUrlInput(false);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !price) {
-      alert('Please fill in title and price.');
+      setFormError('Please enter both a listing title and price.');
       return;
     }
 
@@ -364,13 +370,32 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={handleCustomImageUrl}
-                  className="text-xs text-white hover:text-zinc-300 cursor-pointer font-bold"
+                  onClick={() => setShowUrlInput(!showUrlInput)}
+                  className="text-xs text-zinc-300 hover:text-white cursor-pointer font-bold"
                 >
-                  + URL
+                  {showUrlInput ? 'Cancel' : '+ Add URL'}
                 </button>
               </div>
             </div>
+
+            {showUrlInput && (
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="url"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  placeholder="Paste image link (https://...)"
+                  className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-zinc-700 bg-black text-white focus:outline-none focus:border-[#3db83a]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddImageUrl}
+                  className="px-3.5 py-1.5 text-xs font-bold bg-[#3db83a] text-black rounded-xl hover:bg-emerald-400 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            )}
 
             {/* Hidden native camera/file input */}
             <input
@@ -446,6 +471,11 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
           </div>
 
           <div className="pt-2">
+            {formError && (
+              <p className="mb-2 text-xs font-semibold text-red-400 text-center bg-red-950/40 border border-red-800 rounded-lg py-2 px-3">
+                {formError}
+              </p>
+            )}
             <button
               type="submit"
               className="w-full h-[50px] rounded-[8px] bg-[#00E676] hover:bg-[#00C853] active:scale-[0.99] text-black font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider"

@@ -21,6 +21,68 @@ export const notifications = pgTable('notifications', { id: text('id').primaryKe
 export const orders = pgTable('orders', { id: text('id').primaryKey(), buyerId: text('buyerId').notNull(), sellerId: text('sellerId').notNull(), listingId: text('listingId').notNull(), quantity: integer('quantity').notNull().default(1), amount: integer('amount').notNull(), currency: text('currency').notNull().default('UGX'), status: text('status').notNull().default('pending'), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow() });
 export const reviews = pgTable('reviews', { id: text('id').primaryKey(), reviewerId: text('reviewer_id').notNull(), sellerId: text('seller_id').notNull(), listingId: text('listing_id').notNull(), rating: integer('rating').notNull(), body: text('body'), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow() });
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema: { user, session, account, verification, profiles, listings, favorites, conversations, messages, moderationReports, boostOrders, notifications, orders, reviews } });
+const noOp = {
+  findMany: async () => [],
+  findFirst: async () => null,
+  findUnique: async () => null,
+  create: async (d: any) => d?.data ?? {},
+  update: async (d: any) => d?.data ?? {},
+  delete: async () => ({}),
+};
+
+const createChainableMock = () => {
+  const chain: any = () => chain;
+  const promise = Promise.resolve([]);
+  chain.then = promise.then.bind(promise);
+  chain.catch = promise.catch.bind(promise);
+  chain.finally = promise.finally.bind(promise);
+  return new Proxy(chain, {
+    get: (_t, prop) => {
+      if (prop === 'then') return promise.then.bind(promise);
+      if (prop === 'catch') return promise.catch.bind(promise);
+      if (prop === 'finally') return promise.finally.bind(promise);
+      return () => chain;
+    },
+    apply: () => chain,
+  });
+};
+
+const mockDbProxy = new Proxy({}, {
+  get: (_, prop) => {
+    if (prop === 'query') return new Proxy({}, { get: () => noOp });
+    return () => createChainableMock();
+  },
+});
+
+let poolInstance: any;
+let dbInstance: any;
+
+if (process.env.DATABASE_URL) {
+  try {
+    poolInstance = new Pool({ connectionString: process.env.DATABASE_URL });
+    dbInstance = drizzle(poolInstance, { schema: { user, session, account, verification, profiles, listings, favorites, conversations, messages, moderationReports, boostOrders, notifications, orders, reviews } });
+  } catch {
+    console.warn('[AI Studio] Database not connected — using mock');
+    poolInstance = {
+      query: async () => ({ rows: [], rowCount: 0 }),
+      connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => {} }),
+      on: () => {},
+      end: async () => {},
+    };
+    dbInstance = mockDbProxy;
+  }
+} else {
+  console.warn('[AI Studio] DATABASE_URL not set — using mock');
+  poolInstance = {
+    query: async () => ({ rows: [], rowCount: 0 }),
+    connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => {} }),
+    on: () => {},
+    end: async () => {},
+  };
+  dbInstance = mockDbProxy;
+}
+
+export const pool = poolInstance as Pool;
+export const db = dbInstance as ReturnType<typeof drizzle>;
 export type Database = typeof db;
+

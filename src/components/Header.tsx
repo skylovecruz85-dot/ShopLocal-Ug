@@ -86,7 +86,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs">
+    <header className={`sticky top-0 z-40 border-b shadow-xs transition-colors ${
+      darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+    }`}>
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5">
         {/* Top Navbar Row */}
         <div className="flex items-center justify-between gap-3">
@@ -114,32 +116,35 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="text-[10px] font-black uppercase tracking-wider bg-[#00B53F] text-white px-1 py-0.2 rounded font-mono">
                     UG
                   </span>
-                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-amber-900">
-                    Account
-                  </span>
                 </div>
-                <span className="text-[9px] text-[#757575] font-semibold tracking-tight -mt-0.5 hidden sm:block">
-                  Interactive marketplace preview
+                <span className="text-[9px] text-[#00B53F] font-bold tracking-tight -mt-0.5 hidden sm:block">
+                  Uganda&apos;s Verified Marketplace
                 </span>
               </div>
             </a>
           </div>
 
-          {/* Desktop Search Bar (Grey background #F0F2F5, green search button) */}
+          {/* Desktop Search Bar */}
           <div className="hidden md:flex flex-1 items-center max-w-2xl">
-            <div className="flex items-center w-full rounded-xl bg-[#F0F2F5] border border-slate-200 overflow-hidden shadow-2xs">
+            <div className={`flex items-center w-full rounded-xl border overflow-hidden shadow-2xs ${
+              darkMode ? 'bg-slate-800/90 border-slate-700 text-white' : 'bg-[#F0F2F5] border-slate-200'
+            }`}>
               {/* Location Dropdown with MapPin icon */}
-              <div className="relative border-r border-slate-300 shrink-0">
-                <div className="flex items-center gap-1.5 pl-3 pr-2 py-2 text-xs font-semibold text-slate-700">
+              <div className={`relative border-r shrink-0 ${darkMode ? 'border-slate-700' : 'border-slate-300'}`}>
+                <div className={`flex items-center gap-1.5 pl-3 pr-2 py-2 text-xs font-semibold ${
+                  darkMode ? 'text-white' : 'text-slate-700'
+                }`}>
                   <MapPin className="w-3.5 h-3.5 text-[#00B53F] shrink-0" />
                   <select
                     value={selectedDistrict}
                     onChange={(e) => onSelectDistrict(e.target.value)}
                     aria-label="Select Uganda District"
-                    className="bg-transparent text-xs font-semibold focus:outline-none cursor-pointer pr-4 appearance-none"
+                    className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer pr-4 appearance-none ${
+                      darkMode ? 'text-white' : 'text-slate-900'
+                    }`}
                   >
                     {UGANDA_DISTRICTS.map((d) => (
-                      <option key={d} value={d} className="bg-white text-slate-900">
+                      <option key={d} value={d} className={darkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>
                         {d}
                       </option>
                     ))}
@@ -155,12 +160,14 @@ export const Header: React.FC<HeaderProps> = ({
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
                   placeholder="Search phones, cars, chairs..."
-                  className="w-full px-3 py-2 text-xs sm:text-sm bg-transparent text-[#222222] placeholder-slate-400 focus:outline-none"
+                  className={`w-full px-3 py-2 text-xs sm:text-sm bg-transparent focus:outline-none ${
+                    darkMode ? 'text-white placeholder:text-slate-400' : 'text-[#222222] placeholder:text-slate-400'
+                  }`}
                 />
                 {searchQuery && (
                   <button 
                     onClick={() => onSearchChange('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white cursor-pointer"
                   >
                     ×
                   </button>
@@ -194,7 +201,9 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="flex items-center gap-1.5 p-1 rounded-xl border border-slate-200 bg-[#F0F2F5] hover:bg-slate-200 transition-colors cursor-pointer"
+                className={`flex items-center gap-1.5 p-1 rounded-xl border transition-colors cursor-pointer ${
+                  darkMode ? 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-white' : 'border-slate-200 bg-[#F0F2F5] hover:bg-slate-200 text-slate-800'
+                }`}
                 aria-label="User Profile Menu"
               >
                 <img
@@ -202,26 +211,30 @@ export const Header: React.FC<HeaderProps> = ({
                   alt={currentUser.name}
                   className="w-7 h-7 rounded-lg object-cover ring-1 ring-slate-200"
                 />
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500 hidden sm:block" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
               </button>
 
               {/* Profile Dropdown with Settings */}
               {mobileMenuOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-2xl shadow-xl border border-slate-200 bg-white text-slate-800 py-2 z-50">
-                  <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-[11px] text-slate-500 font-medium">{isaccountAuthenticated ? 'account phone account' : 'Guest account'}</p>
-                    <p className="text-xs font-bold truncate text-[#222222]">{currentUser.name}</p>
-                    <p className="text-[11px] text-slate-500">{currentUser.phone}</p>
+                <div className={`absolute right-0 mt-2 w-72 rounded-2xl shadow-xl border py-2 z-50 ${
+                  darkMode ? 'border-slate-700 bg-slate-900 text-white shadow-2xl' : 'border-slate-200 bg-white text-slate-800'
+                }`}>
+                  <div className={`px-4 py-2.5 border-b ${darkMode ? 'border-slate-800 text-white' : 'border-slate-100 text-slate-900'}`}>
+                    <p className={`text-[11px] font-medium ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>{isaccountAuthenticated ? 'Verified Member' : 'Guest Account'}</p>
+                    <p className="text-xs font-bold truncate text-white">{currentUser.name}</p>
+                    <p className={`text-[11px] ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>{currentUser.phone}</p>
                   </div>
 
                   <div className="py-1">
                     <button
                       onClick={() => { onOpenDashboard(); setMobileMenuOpen(false); }}
-                      className="w-full px-4 py-2 text-left text-xs font-semibold flex items-center justify-between cursor-pointer hover:bg-slate-50"
+                      className={`w-full px-4 py-2 text-left text-xs font-semibold flex items-center justify-between cursor-pointer transition-colors ${
+                        darkMode ? 'hover:bg-slate-800 text-white' : 'hover:bg-slate-50 text-slate-800'
+                      }`}
                     >
                       <div className="flex items-center gap-2">
                         <UserIcon className="w-4 h-4 text-[#00B53F]" />
-                        <span>Seller Studio & Inventory</span>
+                        <span className={darkMode ? 'text-white' : ''}>Seller Studio &amp; Inventory</span>
                       </div>
                       <span className="text-[10px] bg-[#00B53F]/15 text-[#00B53F] font-bold px-1.5 py-0.5 rounded">
                         {currentUser.freeListingsUsed} Ads
@@ -231,10 +244,12 @@ export const Header: React.FC<HeaderProps> = ({
                     {!isaccountAuthenticated && (
                       <button
                         onClick={() => { onOpenSignUp(); setMobileMenuOpen(false); }}
-                        className="w-full px-4 py-2 text-left text-xs font-semibold flex items-center gap-2 cursor-pointer hover:bg-slate-50"
+                        className={`w-full px-4 py-2 text-left text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
+                          darkMode ? 'hover:bg-slate-800 text-white' : 'hover:bg-slate-50 text-slate-800'
+                        }`}
                       >
                         <UserPlus className="w-4 h-4 text-[#00B53F]" />
-                        <span>Sign in or create account</span>
+                        <span className={darkMode ? 'text-white' : ''}>Sign in or create account</span>
                       </button>
                     )}
 
@@ -352,7 +367,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Mobile Search Bar Row (Grey input #F0F2F5, with Location selector that has MapPin icon) */}
+        {/* Mobile Search Bar Row */}
         <div className="md:hidden mt-2.5 flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -361,12 +376,14 @@ export const Header: React.FC<HeaderProps> = ({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search phones, cars, chairs..."
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#F0F2F5] text-xs text-[#222222] placeholder-slate-400 focus:outline-none"
+              className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs focus:outline-none transition-colors ${
+                darkMode ? 'bg-slate-800 text-white placeholder:text-slate-400 border border-slate-700' : 'bg-[#F0F2F5] text-[#222222] placeholder:text-slate-400'
+              }`}
             />
             {searchQuery && (
               <button
                 onClick={() => onSearchChange('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
               >
                 ×
               </button>
@@ -374,25 +391,33 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Mobile Location dropdown with MapPin icon */}
-          <div className="relative flex items-center bg-[#F0F2F5] rounded-xl px-2.5 py-2 border border-slate-200 shrink-0">
+          <div className={`relative flex items-center rounded-xl px-2.5 py-2 border shrink-0 ${
+            darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-[#F0F2F5] border-slate-200 text-slate-700'
+          }`}>
             <MapPin className="w-3.5 h-3.5 text-[#00B53F] mr-1 shrink-0" />
             <select
               value={selectedDistrict}
               onChange={(e) => onSelectDistrict(e.target.value)}
               aria-label="Filter by District"
-              className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer pr-3 appearance-none max-w-[90px] truncate"
+              className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer pr-3 appearance-none max-w-[90px] truncate ${
+                darkMode ? 'text-white' : 'text-slate-700'
+              }`}
             >
               {UGANDA_DISTRICTS.map((d) => (
-                <option key={d} value={d} className="bg-white text-slate-900">{d}</option>
+                <option key={d} value={d} className={darkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>{d}</option>
               ))}
             </select>
             <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
-        {/* Jiji Popular Trending Search Chips (Scrollable, no text cut-off, ample padding) */}
-        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto pb-1.5 pr-6 scrollbar-none no-scrollbar text-xs w-full min-w-0">
-          <span className="text-[11px] font-bold text-slate-500 shrink-0 uppercase tracking-wider pl-0.5">
+        {/* Jiji Popular Trending Search Chips */}
+        <div className={`mt-2 pt-2 border-t flex items-center gap-2 overflow-x-auto pb-1.5 pr-6 scrollbar-none no-scrollbar text-xs w-full min-w-0 ${
+          darkMode ? 'border-slate-800' : 'border-slate-100'
+        }`}>
+          <span className={`text-[11px] font-bold shrink-0 uppercase tracking-wider pl-0.5 ${
+            darkMode ? 'text-slate-300' : 'text-slate-500'
+          }`}>
             Trending:
           </span>
           <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
@@ -403,7 +428,9 @@ export const Header: React.FC<HeaderProps> = ({
                 className={`px-3 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
                   searchQuery.toLowerCase() === tag.toLowerCase()
                     ? 'bg-[#00B53F] text-white font-bold shadow-xs'
-                    : 'bg-[#F0F2F5] text-slate-700 hover:bg-slate-200 hover:text-slate-900'
+                    : darkMode
+                      ? 'bg-slate-800 text-white hover:bg-slate-700'
+                      : 'bg-[#F0F2F5] text-slate-700 hover:bg-slate-200 hover:text-slate-900'
                 }`}
               >
                 {tag}

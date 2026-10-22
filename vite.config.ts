@@ -4,9 +4,9 @@ import path from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
 function parseJsonBody(request: import('node:http').IncomingMessage): Promise<void> {
-  const requestWithBody = request as import('node:http').IncomingMessage & { body?: unknown };
+  const requestWithBody = request as import('node:http').IncomingMessage & { body?: unknown; readableEnded?: boolean };
   return new Promise((resolve, reject) => {
-    if (request.method === 'GET' || request.method === 'HEAD' || requestWithBody.body) return resolve();
+    if (request.method === 'GET' || request.method === 'HEAD' || requestWithBody.body || request.readableEnded) return resolve();
     let raw = '';
     request.setEncoding('utf8');
     request.on('data', (chunk) => { raw += chunk; });
@@ -43,7 +43,9 @@ export default defineConfig(() => {
           void handlers.then(([health]) => health.default(request, response)).catch(next);
         });
         server.middlewares.use('/api/auth', (request, response, next) => {
-          void handlers.then(([, auth]) => auth.default(request, response)).catch(next);
+          const originalUrl = request.url ?? '/';
+          request.url = `/api/auth${originalUrl.startsWith('/') ? originalUrl : `/${originalUrl}`}`;
+          void parseJsonBody(request).then(() => handlers).then(([, auth]) => auth.default(request, response)).catch(next);
         });
         server.middlewares.use('/api/marketplace', (request, response, next) => {
           const originalUrl = request.url ?? '/';
@@ -72,6 +74,9 @@ export default defineConfig(() => {
       },
     },
     server: {
+      host: '0.0.0.0',
+      port: 3000,
+      allowedHosts: true,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',

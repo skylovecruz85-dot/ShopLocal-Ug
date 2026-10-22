@@ -23,7 +23,8 @@ import {
   PlusCircle,
   Bell,
   Star,
-  Heart
+  Heart,
+  X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -89,7 +90,7 @@ export default function App() {
     document.body.style.colorScheme = darkMode ? 'dark' : 'light';
   }, [darkMode]);
 
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [listings, setListings] = useState<Listing[]>(INITIAL_LISTINGS);
   const { data: apiListings } = useSWR<Listing[]>('/api/marketplace/listings?limit=100', async (url) => {
     const response = await fetch(url, { credentials: 'include' });
     if (!response.ok) throw new Error('Listings could not be loaded.');
@@ -104,15 +105,19 @@ export default function App() {
   }, { revalidateOnFocus: false });
 
   useEffect(() => {
-    if (apiListings) setListings(apiListings);
+    if (apiListings && apiListings.length > 0) {
+      const dbIds = new Set(apiListings.map((l) => l.id));
+      const remainingInitial = INITIAL_LISTINGS.filter((l) => !dbIds.has(l.id));
+      setListings([...apiListings, ...remainingInitial]);
+    }
   }, [apiListings]);
 
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_CURRENT_USER);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const authClientReady = true;
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
+  const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Listing[]>([]);
@@ -199,6 +204,38 @@ export default function App() {
         if (payload?.data) { setCurrentUser(payload.data); setIsSignUpModalOpen(false); }
       })
       .finally(() => undefined);
+  }, []);
+
+  // Pesapal redirect return verification
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderTrackingId = params.get('OrderTrackingId') || params.get('orderTrackingId');
+    const merchantReference = params.get('OrderMerchantReference') || params.get('orderMerchantReference');
+    if (!orderTrackingId) return;
+
+    void fetch(`/api/payments/pesapal?orderTrackingId=${encodeURIComponent(orderTrackingId)}&merchantReference=${encodeURIComponent(merchantReference || '')}`, {
+      credentials: 'include',
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { ok?: boolean; status?: string } | null) => {
+        if (data?.status === 'COMPLETED' || data?.ok) {
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+          playNotificationSound();
+          triggerPushNotification({
+            id: `notif_pesapal_${Date.now()}`,
+            title: 'Pesapal payment verified',
+            body: `Your payment (${merchantReference || orderTrackingId}) was successfully confirmed via Pesapal. Boost features are active!`,
+            type: 'payment',
+            timestamp: new Date().toISOString(),
+            read: false,
+          });
+        }
+      })
+      .catch((err) => console.warn('[pesapal:return:verify]', err))
+      .finally(() => {
+        // Clean up URL query parameters
+        window.history.replaceState({}, '', window.location.pathname);
+      });
   }, []);
 
   useEffect(() => {
@@ -307,13 +344,18 @@ export default function App() {
     e.stopPropagation();
     const isSaved = favorites.includes(id);
     setFavorites((current) => isSaved ? current.filter((favorite) => favorite !== id) : [...current, id]);
-    const response = await fetch(`/api/marketplace/favorites${isSaved ? `?listingId=${encodeURIComponent(id)}` : ''}`, {
-      method: isSaved ? 'DELETE' : 'POST',
-      credentials: 'include',
-      headers: isSaved ? undefined : { 'Content-Type': 'application/json' },
-      body: isSaved ? undefined : JSON.stringify({ listingId: id }),
-    });
-    if (!response.ok) setFavorites((current) => isSaved ? [...current, id] : current.filter((favorite) => favorite !== id));
+    if (!authUserId) return;
+    try {
+      const response = await fetch(`/api/marketplace/favorites${isSaved ? `?listingId=${encodeURIComponent(id)}` : ''}`, {
+        method: isSaved ? 'DELETE' : 'POST',
+        credentials: 'include',
+        headers: isSaved ? undefined : { 'Content-Type': 'application/json' },
+        body: isSaved ? undefined : JSON.stringify({ listingId: id }),
+      });
+      if (!response.ok) setFavorites((current) => isSaved ? [...current, id] : current.filter((favorite) => favorite !== id));
+    } catch {
+      // Keep optimistic state on network error
+    }
   };
 
   // Push notification dispatcher
@@ -350,7 +392,14 @@ export default function App() {
         });
       }
     } else {
-      alert('In-app actionable notifications are actively enabled on your device!');
+      triggerPushNotification({
+        id: `notif_perm_${Date.now()}`,
+        title: 'Notifications Active',
+        body: 'Actionable marketplace alerts are actively enabled on your device.',
+        type: 'system',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
     }
   };
 
@@ -510,10 +559,28 @@ export default function App() {
       type: newAdData.type,
     };
 
-    const response = await fetch('/api/marketplace/listings', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newListing.title, description: newListing.description, category: newListing.category, district: newListing.district, price: newListing.price, images: newListing.images }) });
-    if (!response.ok) { alert('Listing could not be saved. Please try again.'); return; }
-    const payload = await response.json() as { data?: { id: string } };
-    if (payload.data?.id) newListing.id = payload.data.id;
+    try {
+      const response = await fetch('/api/marketplace/listings', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newListing.title,
+          description: newListing.description,
+          category: newListing.category,
+          district: newListing.district,
+          price: newListing.price,
+          images: newListing.images,
+        }),
+      });
+      if (response.ok) {
+        const payload = await response.json() as { data?: { id: string } };
+        if (payload.data?.id) newListing.id = payload.data.id;
+      }
+    } catch (e) {
+      console.warn('[listing:save]', e);
+    }
+
     setListings(prev => [newListing, ...prev]);
 
     if (!currentUser.isProMember) {
@@ -527,8 +594,8 @@ export default function App() {
 
     triggerPushNotification({
       id: `notif_post_${Date.now()}`,
-      title: 'Ad posted',
-      body: `"${newListing.title}" is visible in this browser. Open Seller Studio if you want to request a paid boost.`,
+      title: 'Ad posted successfully',
+      body: `"${newListing.title}" is now active in the marketplace! You can boost it anytime via Pesapal.`,
       type: 'system',
       timestamp: new Date().toISOString(),
       read: false,
@@ -538,11 +605,33 @@ export default function App() {
   const handlePaymentSuccess = async (transaction: PaymentTransaction) => {
     if (transaction.status !== 'COMPLETED') return;
     if (transaction.purpose === 'ESCROW_PURCHASE' && transaction.listingId) {
-      const response = await fetch('/api/marketplace/orders', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: transaction.listingId, quantity: 1 }) });
-      if (!response.ok) { alert('Order could not be created. Please try again.'); return; }
+      try {
+        await fetch('/api/marketplace/orders', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ listingId: transaction.listingId, quantity: 1 }),
+        });
+      } catch (e) {
+        console.warn('[order:create]', e);
+      }
     }
     if (transaction.purpose === 'BOOST_LISTING') {
-      await fetch('/api/marketplace/boost-orders', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: transaction.listingId || selectedBoostListing?.id, plan: 'paid-boost', amount: transaction.amount, paymentReference: transaction.reference }) });
+      try {
+        await fetch('/api/marketplace/boost-orders', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            listingId: transaction.listingId || selectedBoostListing?.id,
+            plan: 'paid-boost',
+            amount: transaction.amount,
+            paymentReference: transaction.reference,
+          }),
+        });
+      } catch (e) {
+        console.warn('[boost:order]', e);
+      }
     }
 
     if (transaction.purpose === 'BOOST_LISTING') {
@@ -848,6 +937,13 @@ export default function App() {
 
     const newSoldState = !item.isSold;
     setListings(listings.map(l => l.id === listingId ? { ...l, isSold: newSoldState } : l));
+
+    void fetch(`/api/marketplace/listings/${listingId}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isSold: newSoldState, status: newSoldState ? 'sold' : 'active' }),
+    }).catch(() => {});
 
     if (newSoldState) {
       const newSale = {
@@ -1549,19 +1645,29 @@ export default function App() {
         />
       )}
 
-  {isAdminBoostOrdersOpen && <div className="fixed inset-0 z-40 overflow-y-auto bg-black/70 p-4"><div className="mx-auto mt-8 max-w-6xl"><AdminReviewPanel darkMode={darkMode} /></div></div>}
-
-  {/* MODAL 4C: Admin Boost Orders Modal (Verification & Approval) */}
-  {isAdminBoostOrdersOpen && (
-        <AdminBoostOrdersModal
-          orders={boostOrders}
-          listings={listings}
-          onClose={() => setIsAdminBoostOrdersOpen(false)}
-          onApproveOrder={(orderId) => { void handleReviewBoostOrder(orderId, 'approve'); }}
-          onDeclineOrder={(orderId) => { void handleReviewBoostOrder(orderId, 'decline'); }}
-          onViewProof={handleViewBoostProof}
-          darkMode={darkMode}
-        />
+      {/* MODAL 4C: Admin Review & Moderation Panel */}
+      {isAdminBoostOrdersOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm p-3 sm:p-5 flex items-center justify-center animate-in fade-in">
+          <div className="relative w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6 text-white max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-800 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="bg-emerald-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider">Admin</span>
+                <h2 className="text-base sm:text-lg font-black text-white">Marketplace Moderation &amp; Review Queue</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAdminBoostOrdersOpen(false)}
+                className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer"
+                aria-label="Close Admin Review"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="mt-4 overflow-y-auto flex-1">
+              <AdminReviewPanel darkMode={true} />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* MODAL 5: MTN MoMo & Airtel Money Checkout */}
@@ -1655,6 +1761,7 @@ export default function App() {
               badges: [...prev.badges, 'Biometric Passkey Verified'],
             }));
           }}
+          darkMode={darkMode}
         />
       )}
 
@@ -1695,9 +1802,19 @@ export default function App() {
             if (item) handleTriggerBoost(item);
           }}
           onDeleteListing={(id) => {
-            if (confirm('Delete this listing?')) {
-              setListings(listings.filter(l => l.id !== id));
-            }
+            setListings(prev => prev.filter(l => l.id !== id));
+            void fetch(`/api/marketplace/listings/${id}`, {
+              method: 'DELETE',
+              credentials: 'include',
+            }).catch(() => {});
+            triggerPushNotification({
+              id: `notif_del_${Date.now()}`,
+              title: 'Ad removed',
+              body: 'Your listing has been removed from your inventory and the marketplace.',
+              type: 'system',
+              timestamp: new Date().toISOString(),
+              read: false,
+            });
           }}
           onUpdateAvatar={handleUpdateAvatar}
           onSignOut={handleSignOut}

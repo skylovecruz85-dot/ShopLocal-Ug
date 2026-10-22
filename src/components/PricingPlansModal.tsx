@@ -350,36 +350,24 @@ TOP placement
                 type="button"
                 onClick={() => {
                   const price = (selectedPromo === 'TOP' ? (topDuration === 7 ? 9500 : 21500) : 28550) as 9500 | 21500 | 28550;
-                  const planTitle: '7 days' | '30 days' | 'Boost Premium' = 
-                    selectedPromo === 'TOP' ? (topDuration === 7 ? '7 days' : '30 days') : 'Boost Premium';
-
-                  if (onOpenManualBoost) {
-                    onOpenManualBoost({
-                      amount: price,
-                      planName: planTitle,
-                      adTitle: selectedBoostListingTitle || 'My Ad Posting',
-                      listingId: selectedBoostListingId,
-                    });
-                  } else {
-                    onSelectPlan({
-                      id: selectedPromo === 'TOP' ? `top_${topDuration}d` : 'boost_premium_28d',
-                      name: selectedPromo === 'TOP' ? `TOP Promo (${topDuration} Days)` : 'Boost Premium (28 Days)',
-                      type: 'boost',
-                      adsCount: selectedPromo === 'TOP' ? 1 : 40,
-                      duration: selectedPromo === 'TOP' ? (topDuration === 7 ? 'Weekly' : 'Monthly') : 'Monthly',
-                      priceUGX: price,
-                      features: [
-selectedPromo === 'TOP' ? 'Top-of-search placement preview' : 'Featured placement preview',
-      'Simulated checkout only; no funds or escrow',
-      'Sample badge styling; identity is not checked'
-                      ],
-                      badge: selectedPromo === 'TOP' ? 'TOP' : 'PREMIUM'
-                    });
-                  }
+                  onSelectPlan({
+                    id: selectedPromo === 'TOP' ? `top_${topDuration}d` : 'boost_premium_28d',
+                    name: selectedPromo === 'TOP' ? `TOP Placement (${topDuration} Days)` : 'Boost Premium (28 Days)',
+                    type: 'boost',
+                    adsCount: selectedPromo === 'TOP' ? 1 : 40,
+                    duration: selectedPromo === 'TOP' ? (topDuration === 7 ? 'Weekly' : 'Monthly') : 'Monthly',
+                    priceUGX: price,
+                    features: [
+                      selectedPromo === 'TOP' ? 'Top-of-search placement in Uganda' : 'Featured placement on home & search',
+                      'Instant activation via Pesapal',
+                      'Verified Seller Boost Badge'
+                    ],
+                    badge: selectedPromo === 'TOP' ? 'TOP' : 'PREMIUM'
+                  });
                 }}
                 className="w-full h-[50px] rounded-[8px] bg-[#00E676] hover:bg-[#00C853] text-black font-bold text-[14px] flex items-center justify-center transition-all cursor-pointer shadow-md"
               >
-                Preview boost &amp; post ad (USh {selectedPromo === 'TOP' ? (topDuration === 7 ? '9,500' : '21,500') : '28,550'})
+                Pay with Pesapal &amp; Boost Ad (UGX {selectedPromo === 'TOP' ? (topDuration === 7 ? '9,500' : '21,500') : '28,550'})
               </button>
 
               <button
@@ -398,7 +386,6 @@ selectedPromo === 'TOP' ? 'Top-of-search placement preview' : 'Featured placemen
                 href="#terms"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert('Terms of Use: Ad listings must comply with Ugandan laws and ShopLocal guidelines.');
                 }}
                 className="text-[#00E676] underline hover:text-[#00C853] cursor-pointer"
               >

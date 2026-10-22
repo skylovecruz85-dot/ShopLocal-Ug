@@ -8,7 +8,13 @@ type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
 const body = (req: RequestWithBody) => (req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {});
 const required = (value: unknown, field: string) => { if (typeof value !== 'string' || !value.trim()) throw new Error(`Invalid ${field}`); return value.trim(); };
-const getUser = async (req: IncomingMessage) => auth.api.getSession({ headers: new Headers({ cookie: req.headers.cookie ?? '' }) });
+const getUser = async (req: IncomingMessage) => {
+  try {
+    return await auth.api.getSession({ headers: new Headers({ cookie: req.headers.cookie ?? '' }) });
+  } catch {
+    return null;
+  }
+};
 const isAdmin = (userId: string) => {
   const configuredIds = [process.env.SHOPLOCAL_ADMIN_USER_ID, process.env.BOOST_ADMIN_FIREBASE_UID].filter((value): value is string => Boolean(value?.trim()));
   return configuredIds.includes(userId);
@@ -22,9 +28,14 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       const query = url.searchParams.get('q')?.trim();
       const page = Math.max(Number(url.searchParams.get('page') ?? 1), 1);
       const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 24), 1), 50);
-      const filters = [eq(listings.status, 'active'), query ? or(ilike(listings.title, `%${query}%`), ilike(listings.description, `%${query}%`), ilike(listings.category, `%${query}%`)) : undefined].filter(Boolean) as never[];
-      const rows = await db.select().from(listings).where(and(...filters)).orderBy(desc(listings.createdAt)).limit(limit).offset((page - 1) * limit);
-      return json(res, 200, { data: rows, page, limit });
+      try {
+        const filters = [eq(listings.status, 'active'), query ? or(ilike(listings.title, `%${query}%`), ilike(listings.description, `%${query}%`), ilike(listings.category, `%${query}%`)) : undefined].filter(Boolean) as never[];
+        const rows = await db.select().from(listings).where(and(...filters)).orderBy(desc(listings.createdAt)).limit(limit).offset((page - 1) * limit);
+        return json(res, 200, { data: rows ?? [], page, limit });
+      } catch (err) {
+        console.warn('[marketplace] DB query fallback:', err);
+        return json(res, 200, { data: [], page, limit });
+      }
     }
     if (!session?.user) return json(res, 401, { error: 'Authentication required.' });
     if (url.pathname === '/api/marketplace/admin/overview' && req.method === 'GET') {

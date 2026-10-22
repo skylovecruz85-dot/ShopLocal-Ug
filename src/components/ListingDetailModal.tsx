@@ -257,9 +257,13 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
               </div>
 
               {/* Header Price Box */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/40 border border-emerald-200">
+              <div className={`p-4 sm:p-5 rounded-2xl border ${
+                darkMode ? 'bg-slate-800/90 border-slate-700 text-white' : 'bg-gradient-to-br from-emerald-50 to-emerald-100/40 border-emerald-200'
+              }`}>
                 <div className="flex items-baseline justify-between mb-1">
-                  <span className="font-display font-extrabold text-2xl sm:text-3xl text-emerald-800">
+                  <span className={`font-display font-extrabold text-2xl sm:text-3xl ${
+                    darkMode ? 'text-[#00E676]' : 'text-emerald-800'
+                  }`}>
                     {formatUGX(listing.price)}
                   </span>
                   {listing.isNegotiable && (
@@ -269,31 +273,41 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                   )}
                 </div>
 
-                <h1 className="font-display font-bold text-lg text-slate-900 mt-2 leading-tight">
+                <h1 className={`font-display font-bold text-lg mt-2 leading-tight ${
+                  darkMode ? 'text-white' : 'text-slate-900'
+                }`}>
                   {listing.title}
                 </h1>
 
                 {(listing.brand || listing.type) && (
                   <div className="flex flex-wrap gap-2 mt-2.5">
                     {listing.brand && (
-                      <span className="text-xs bg-white text-slate-800 font-bold px-2.5 py-1 rounded-lg border border-emerald-200 shadow-xs">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border shadow-xs ${
+                        darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white text-slate-800 border-emerald-200'
+                      }`}>
                         Brand: <span className="text-[#3db83a]">{listing.brand}</span>
                       </span>
                     )}
                     {listing.type && (
-                      <span className="text-xs bg-white text-slate-800 font-bold px-2.5 py-1 rounded-lg border border-emerald-200 shadow-xs">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border shadow-xs ${
+                        darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white text-slate-800 border-emerald-200'
+                      }`}>
                         Type: <span className="text-[#3db83a]">{listing.type}</span>
                       </span>
                     )}
                   </div>
                 )}
 
-                <div className="flex items-center gap-1 text-slate-600 text-xs mt-3">
-                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-medium">{listing.district} • {listing.locationDetails}</span>
+                <div className={`flex items-center gap-1 text-xs mt-3 ${
+                  darkMode ? 'text-slate-200' : 'text-slate-600'
+                }`}>
+                  <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span className={`font-medium ${darkMode ? 'text-white' : ''}`}>{listing.district} • {listing.locationDetails}</span>
                 </div>
 
-                <div className="flex items-center gap-3 text-slate-500 text-[11px] mt-2 pt-2 border-t border-emerald-200/50">
+                <div className={`flex items-center gap-3 text-[11px] mt-2 pt-2 border-t ${
+                  darkMode ? 'text-slate-300 border-slate-700' : 'text-slate-500 border-emerald-200/50'
+                }`}>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" /> Posted {formatTimeAgo(listing.createdAt)}
                   </span>
@@ -306,19 +320,52 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
 
               {/* Action Buttons */}
               <div className="space-y-2.5">
-                {/* Marketplace chat & negotiate */}
+                {/* Buy Now with Pesapal Escrow */}
                 <button
-                  onClick={() => onOpenChat(listing)}
-                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  type="button"
+                  onClick={() => onOpenMomoCheckout(listing)}
+                  className="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-950 font-black text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Try marketplace chat & offer</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Buy Now with Pesapal Escrow</span>
                 </button>
 
-                <div className={`rounded-xl border p-3 text-xs leading-relaxed ${
-                  darkMode ? 'bg-slate-800/60 border-slate-700 text-slate-300' : 'bg-amber-50 border-amber-200 text-amber-900'
-                }`}>
-                  Seller phone and WhatsApp links are disabled in this preview. Use the in-app marketplace chat instead.
+                {/* Marketplace chat & negotiate */}
+                <button
+                  type="button"
+                  onClick={() => onOpenChat(listing)}
+                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Chat &amp; Make Offer</span>
+                </button>
+
+                {/* Direct Contact (Call & WhatsApp) */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPhone(!showPhone)}
+                    className={`py-2.5 px-3 rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                      showPhone
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : darkMode
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 hover:border-slate-600'
+                          : 'border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span className="truncate">{showPhone ? (listing.seller.phone || '0772 123 456') : 'Call Seller'}</span>
+                  </button>
+
+                  <a
+                    href={`https://wa.me/${(listing.seller.phone || '256772123456').replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${listing.seller.name}, I am interested in your "${listing.title}" on ShopLocal UG.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-2.5 px-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </a>
                 </div>
 
                 {/* Safety & Report row */}
@@ -350,13 +397,17 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
             Left: Price "UGX 85,000" green bold 18px + "Negotiable" grey 11px under it
             Right: 2 buttons: "Chat" green outline, "Call" green solid
         */}
-        <div className="bg-white border-t border-slate-200 px-4 py-3 sm:px-6 flex items-center justify-between shrink-0 sticky bottom-0 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+        <div className={`border-t px-4 py-3 sm:px-6 flex items-center justify-between shrink-0 sticky bottom-0 z-30 transition-colors ${
+          darkMode ? 'bg-slate-900 border-slate-800 text-white shadow-[0_-4px_16px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200 text-slate-900 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]'
+        }`}>
           <div className="flex flex-col">
-            <span className="text-[18px] font-extrabold text-[#00B53F] leading-tight">
+            <span className="text-[18px] font-extrabold text-[#00E676] leading-tight">
               {formatUGX(listing.price)}
             </span>
             {listing.isNegotiable && (
-              <span className="text-[11px] text-[#757575] font-medium leading-none mt-0.5">
+              <span className={`text-[11px] font-medium leading-none mt-0.5 ${
+                darkMode ? 'text-slate-300' : 'text-[#757575]'
+              }`}>
                 Negotiable
               </span>
             )}

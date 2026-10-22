@@ -14,16 +14,19 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   onChangeTab,
   unreadCount,
   favoritesCount = 0,
+  darkMode = false,
 }) => {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-[65px] bg-white border-t border-slate-200 shadow-md flex items-center justify-around px-2">
+    <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-40 h-[65px] border-t shadow-md flex items-center justify-around px-2 transition-colors ${
+      darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+    }`}>
       {/* Home Tab */}
       <button
         onClick={() => onChangeTab('home')}
         className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-colors cursor-pointer ${
           currentTab === 'home' 
             ? 'text-[#00B53F] font-bold' 
-            : 'text-[#757575] hover:text-[#222222]'
+            : darkMode ? 'text-white hover:text-[#00B53F]' : 'text-[#757575] hover:text-[#222222]'
         }`}
       >
         <Home className="w-5 h-5" />
@@ -36,7 +39,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-colors cursor-pointer ${
           currentTab === 'saved' 
             ? 'text-[#00B53F] font-bold' 
-            : 'text-[#757575] hover:text-[#222222]'
+            : darkMode ? 'text-white hover:text-[#00B53F]' : 'text-[#757575] hover:text-[#222222]'
         }`}
       >
         <div className="relative">
@@ -50,7 +53,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         <span className="text-[10px] mt-0.5">Saved</span>
       </button>
 
-      {/* 56px Centered Circle SELL Button - Not floating over page content */}
+      {/* 56px Centered Circle SELL Button */}
       <button
         onClick={() => onChangeTab('post')}
         className="flex flex-col items-center justify-center cursor-pointer group shrink-0"
@@ -70,7 +73,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-colors cursor-pointer ${
           currentTab === 'messages' 
             ? 'text-[#00B53F] font-bold' 
-            : 'text-[#757575] hover:text-[#222222]'
+            : darkMode ? 'text-white hover:text-[#00B53F]' : 'text-[#757575] hover:text-[#222222]'
         }`}
       >
         <div className="relative">
@@ -90,7 +93,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-colors cursor-pointer ${
           currentTab === 'dashboard' 
             ? 'text-[#00B53F] font-bold' 
-            : 'text-[#757575] hover:text-[#222222]'
+            : darkMode ? 'text-white hover:text-[#00B53F]' : 'text-[#757575] hover:text-[#222222]'
         }`}
       >
         <User className="w-5 h-5" />

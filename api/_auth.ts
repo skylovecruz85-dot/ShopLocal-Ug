@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth';
-import { pool } from './db.ts';
+import { pool } from './_db.ts';
 
 const origins = [
   'http://localhost:3000',

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { db, boostOrders } from '../db.ts';
+import { db, boostOrders } from '../_db.ts';
 import { eq } from 'drizzle-orm';
 
 type PaymentProvider = 'MTN_MOMO' | 'AIRTEL_MONEY';

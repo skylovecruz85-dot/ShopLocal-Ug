@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { db, boostOrders } from '../db.ts';
+import { db, boostOrders } from '../_db.ts';
 import { eq } from 'drizzle-orm';
 
 type PaymentRequest = {

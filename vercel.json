@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/auth/:path*", "destination": "/api/auth/[...all]" },
+    { "source": "/api/auth", "destination": "/api/auth/index" },
+    { "source": "/api/marketplace/:path*", "destination": "/api/marketplace" },
+    { "source": "/api/marketplace", "destination": "/api/marketplace" },
+    { "source": "/api/payments/pesapal/:path*", "destination": "/api/payments/pesapal" },
+    { "source": "/api/payments/pesapal", "destination": "/api/payments/pesapal" },
+    { "source": "/api/payments/webhook", "destination": "/api/payments/webhook" },
+    { "source": "/api/uploads", "destination": "/api/uploads" },
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

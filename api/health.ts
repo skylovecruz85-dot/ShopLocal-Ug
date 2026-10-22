@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { sql } from 'drizzle-orm';
-import { db } from './db.ts';
+import { db } from './_db.ts';
 
 export default async function handler(_req: IncomingMessage, res: ServerResponse) {
   try {

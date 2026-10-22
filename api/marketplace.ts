@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
-import { auth } from './auth.ts';
-import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, notifications, orders, profiles, reviews, user } from './db.ts';
+import { auth } from './_auth.ts';
+import { boostOrders, conversations, db, favorites, listings, messages, moderationReports, notifications, orders, profiles, reviews, user } from './_db.ts';
 
 type RequestWithBody = IncomingMessage & { body?: unknown };
 const json = (res: ServerResponse, status: number, body: unknown) => { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body)); };
